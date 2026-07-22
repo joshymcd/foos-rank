@@ -3,10 +3,7 @@ import { useLiveQuery } from '@tanstack/react-db'
 import { AppShell, EmptyOrganization } from '../components/app-shell'
 import { MatchTeams } from '../components/match-teams'
 import { organizationsCollection } from '../collections/organization'
-import {
-  activeMatchesCollection,
-  matchesCollection,
-} from '../collections/matches'
+import { matchesCollection } from '../collections/matches'
 import { peopleCollection } from '../collections/people'
 import { leaderboard } from '../domain/elo'
 
@@ -20,10 +17,13 @@ function Overview() {
   const people = (useLiveQuery(() => peopleCollection).data ?? []).filter(
     (person) => person.organizationId === organizationId,
   )
-  const matches = useLiveQuery(() => matchesCollection).data ?? []
-  const activeMatch = (
-    useLiveQuery(() => activeMatchesCollection).data ?? []
-  ).at(0)
+  const allMatches = useLiveQuery(() => matchesCollection).data ?? []
+  const matches = allMatches.filter(
+    (match) => match.organizationId === organizationId && match.complete,
+  )
+  const activeMatch = allMatches.find(
+    (match) => match.organizationId === organizationId && !match.complete,
+  )
   if (!organization)
     return (
       <AppShell title="Overview">

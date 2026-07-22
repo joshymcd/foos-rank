@@ -5,7 +5,6 @@ import { useState } from 'react'
 import { AppShell, EmptyOrganization } from '../../components/app-shell'
 import { organizationsCollection } from '../../collections/organization'
 import {
-  activeMatchesCollection,
   defaultRoles,
   formats,
   matchesCollection,
@@ -38,44 +37,63 @@ function NewMatch() {
   const people = (useLiveQuery(() => peopleCollection).data ?? []).filter(
     (person) => person.organizationId === organizationId,
   )
-  const active = (useLiveQuery(() => activeMatchesCollection).data ?? []).at(0)
+  const matches = useLiveQuery(() => matchesCollection).data ?? []
+  const active = matches.find(
+    (match) => match.organizationId === organizationId && !match.complete,
+  )
   const start = useMutation({
     mutationFn: async ({
       format,
       participants,
+      matchOrganizationId,
     }: {
       format: MatchFormat
       participants: MatchParticipant[]
+      matchOrganizationId: string
     }) => {
-      const match = activeMatchesCollection.insert({
+      const match = matchesCollection.insert({
         id: crypto.randomUUID(),
+        organizationId: matchOrganizationId,
         format,
         participants,
         startedAt: new Date().toISOString(),
+        complete: false,
+        sequence: null,
+        completedAt: null,
+        score: null,
+        ratingAlgorithm: null,
       })
       await match.isPersisted.promise
     },
   })
   const complete = useMutation({
     mutationFn: async (score: Record<TeamColor, number>) => {
-      const current = Array.from(activeMatchesCollection.values()).at(0)
+      const current = Array.from(matchesCollection.values()).find(
+        (match) => match.organizationId === organizationId && !match.complete,
+      )
       if (!current) throw new Error('There is no active match.')
-      const match = matchesCollection.insert({
-        ...current,
-        sequence: matchesCollection.size + 1,
-        completedAt: new Date().toISOString(),
-        score,
-        ratingAlgorithm: 'elo-team-average-v1',
+      const match = matchesCollection.update(current.id, (draft) => {
+        draft.complete = true
+        draft.sequence =
+          Array.from(matchesCollection.values()).filter(
+            (storedMatch) =>
+              storedMatch.organizationId === organizationId &&
+              storedMatch.complete,
+          ).length + 1
+        draft.completedAt = new Date().toISOString()
+        draft.score = score
+        draft.ratingAlgorithm = 'elo-team-average-v1'
       })
       await match.isPersisted.promise
-      await activeMatchesCollection.delete(current.id).isPersisted.promise
     },
   })
   const cancel = useMutation({
     mutationFn: async () => {
-      const current = Array.from(activeMatchesCollection.values()).at(0)
+      const current = Array.from(matchesCollection.values()).find(
+        (match) => match.organizationId === organizationId && !match.complete,
+      )
       if (current)
-        await activeMatchesCollection.delete(current.id).isPersisted.promise
+        await matchesCollection.delete(current.id).isPersisted.promise
     },
   })
   const [format, setFormat] = useState<MatchFormat>('1v1')
@@ -219,7 +237,13 @@ function NewMatch() {
         )}
         <button
           disabled={start.isPending || Boolean(configurationError)}
-          onClick={() => start.mutate({ format, participants })}
+          onClick={() =>
+            start.mutate({
+              format,
+              participants,
+              matchOrganizationId: organization.id,
+            })
+          }
           className="mt-6 rounded-md bg-emerald-700 px-4 py-2 font-semibold text-white disabled:opacity-50"
         >
           Start match

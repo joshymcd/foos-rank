@@ -2,13 +2,6 @@ import { createCollection } from '@tanstack/db'
 import { queryCollectionOptions } from '@tanstack/query-db-collection'
 import { z } from 'zod'
 import { queryClient } from '../query-client'
-import {
-  createActiveMatch,
-  createCompletedMatch,
-  deleteActiveMatch,
-  listActiveMatches,
-  listMatches,
-} from './mock-api'
 
 export const teamColorSchema = z.enum(['red', 'blue'])
 export const playerRoleSchema = z.enum(['attack', 'defence', 'both'])
@@ -18,25 +11,64 @@ export const participantSchema = z.object({
   team: teamColorSchema,
   role: playerRoleSchema,
 })
-export const activeMatchSchema = z.object({
+export const matchSchema = z.object({
   id: z.string(),
+  organizationId: z.string(),
   format: matchFormatSchema,
   participants: z.array(participantSchema),
   startedAt: z.string(),
-})
-export const completedMatchSchema = activeMatchSchema.extend({
-  sequence: z.number(),
-  completedAt: z.string(),
-  score: z.object({ red: z.number(), blue: z.number() }),
-  ratingAlgorithm: z.literal('elo-team-average-v1'),
+  complete: z.boolean(),
+  sequence: z.number().nullable(),
+  completedAt: z.string().nullable(),
+  score: z.object({ red: z.number(), blue: z.number() }).nullable(),
+  ratingAlgorithm: z.literal('elo-team-average-v1').nullable(),
 })
 
 export type TeamColor = z.infer<typeof teamColorSchema>
 export type PlayerRole = z.infer<typeof playerRoleSchema>
 export type MatchFormat = z.infer<typeof matchFormatSchema>
 export type MatchParticipant = z.infer<typeof participantSchema>
-export type ActiveMatch = z.infer<typeof activeMatchSchema>
-export type CompletedMatch = z.infer<typeof completedMatchSchema>
+export type Match = z.infer<typeof matchSchema>
+
+const storageKey = 'foosrank-matches'
+
+async function listMatches(): Promise<Match[]> {
+  try {
+    const matches = JSON.parse(window.localStorage.getItem(storageKey) ?? '[]')
+    return Array.isArray(matches) ? matches : []
+  } catch {
+    return []
+  }
+}
+
+async function createMatch(match: Match) {
+  const matches = await listMatches()
+  window.localStorage.setItem(storageKey, JSON.stringify([...matches, match]))
+  return match
+}
+
+async function updateMatch(match: Match) {
+  const matches = await listMatches()
+  window.localStorage.setItem(
+    storageKey,
+    JSON.stringify(
+      matches.map((item) => (item.id === match.id ? match : item)),
+    ),
+  )
+  return match
+}
+
+async function deleteMatch(id: string) {
+  const matches = await listMatches()
+  window.localStorage.setItem(
+    storageKey,
+    JSON.stringify(matches.filter((match) => match.id !== id)),
+  )
+}
+
+export async function resetMatches() {
+  window.localStorage.removeItem(storageKey)
+}
 
 export const formats: Array<{
   value: MatchFormat
@@ -102,39 +134,25 @@ export function validateMatch(
   }
 }
 
-export const activeMatchesCollection = createCollection(
-  queryCollectionOptions({
-    queryKey: ['foosrank', 'active-matches'],
-    queryFn: listActiveMatches,
-    queryClient,
-    schema: activeMatchSchema,
-    getKey: (match) => match.id,
-    onInsert: async ({ transaction }) =>
-      Promise.all(
-        transaction.mutations.map((mutation) =>
-          createActiveMatch(mutation.modified),
-        ),
-      ),
-    onDelete: async ({ transaction }) =>
-      Promise.all(
-        transaction.mutations.map((mutation) =>
-          deleteActiveMatch(mutation.modified.id),
-        ),
-      ),
-  }),
-)
-
 export const matchesCollection = createCollection(
   queryCollectionOptions({
     queryKey: ['foosrank', 'matches'],
     queryFn: listMatches,
     queryClient,
-    schema: completedMatchSchema,
+    schema: matchSchema,
     getKey: (match) => match.id,
     onInsert: async ({ transaction }) =>
       Promise.all(
+        transaction.mutations.map((mutation) => createMatch(mutation.modified)),
+      ),
+    onUpdate: async ({ transaction }) =>
+      Promise.all(
+        transaction.mutations.map((mutation) => updateMatch(mutation.modified)),
+      ),
+    onDelete: async ({ transaction }) =>
+      Promise.all(
         transaction.mutations.map((mutation) =>
-          createCompletedMatch(mutation.modified),
+          deleteMatch(mutation.modified.id),
         ),
       ),
   }),

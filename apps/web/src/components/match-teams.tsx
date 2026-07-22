@@ -1,8 +1,8 @@
-import type { CompletedMatch } from '../collections/matches'
+import type { Match } from '../collections/matches'
 import type { Person } from '../collections/people'
 
 function participantNames(
-  match: Pick<CompletedMatch, 'participants'>,
+  match: Pick<Match, 'participants'>,
   people: Person[],
   team: 'red' | 'blue',
 ) {
@@ -20,7 +20,7 @@ export function MatchTeams({
   match,
   people,
 }: {
-  match: CompletedMatch
+  match: Match
   people: Person[]
 }) {
   return (
@@ -29,7 +29,7 @@ export function MatchTeams({
         <strong>Red</strong> {participantNames(match, people, 'red')}
       </div>
       <div className="text-center font-bold tabular-nums">
-        {match.score.red} - {match.score.blue}
+        {match.score?.red} - {match.score?.blue}
       </div>
       <div className="rounded bg-blue-50 px-3 py-2 text-blue-950">
         <strong>Blue</strong> {participantNames(match, people, 'blue')}

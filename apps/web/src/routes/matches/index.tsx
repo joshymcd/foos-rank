@@ -16,7 +16,9 @@ function Matches() {
   const people = (useLiveQuery(() => peopleCollection).data ?? []).filter(
     (person) => person.organizationId === organizationId,
   )
-  const matches = useLiveQuery(() => matchesCollection).data ?? []
+  const matches = (useLiveQuery(() => matchesCollection).data ?? []).filter(
+    (match) => match.organizationId === organizationId && match.complete,
+  )
   if (!organization)
     return (
       <AppShell title="Matches">
@@ -43,7 +45,11 @@ function Matches() {
           >
             <div className="mb-3 flex justify-between text-xs text-slate-500">
               <span>{match.format}</span>
-              <time>{new Date(match.completedAt).toLocaleDateString()}</time>
+              <time>
+                {new Date(
+                  match.completedAt ?? match.startedAt,
+                ).toLocaleDateString()}
+              </time>
             </div>
             <MatchTeams match={match} people={people} />
           </Link>

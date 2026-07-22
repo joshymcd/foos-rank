@@ -16,7 +16,9 @@ function Leaderboard() {
   const people = (useLiveQuery(() => peopleCollection).data ?? []).filter(
     (person) => person.organizationId === organizationId,
   )
-  const matches = useLiveQuery(() => matchesCollection).data ?? []
+  const matches = (useLiveQuery(() => matchesCollection).data ?? []).filter(
+    (match) => match.organizationId === organizationId && match.complete,
+  )
   if (!organization)
     return (
       <AppShell title="Leaderboard">

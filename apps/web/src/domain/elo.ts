@@ -1,4 +1,4 @@
-import type { CompletedMatch, TeamColor } from '../collections/matches'
+import type { Match, TeamColor } from '../collections/matches'
 import type { Person } from '../collections/people'
 
 export interface RankedPerson extends Person {
@@ -20,11 +20,14 @@ export interface MatchRatingChange {
 const INITIAL_RATING = 1000
 const K_FACTOR = 32
 
-export function replayRatings(people: Person[], matches: CompletedMatch[]) {
+export function replayRatings(people: Person[], matches: Match[]) {
   const ratings = new Map(people.map((person) => [person.id, INITIAL_RATING]))
   const changes = new Map<string, MatchRatingChange[]>()
 
-  for (const match of [...matches].sort((a, b) => a.sequence - b.sequence)) {
+  for (const match of [...matches].sort(
+    (a, b) => (a.sequence ?? 0) - (b.sequence ?? 0),
+  )) {
+    if (!match.complete || !match.score) continue
     const teamMembers = (team: TeamColor) =>
       match.participants.filter((participant) => participant.team === team)
     const red = teamMembers('red')
@@ -63,7 +66,7 @@ export function replayRatings(people: Person[], matches: CompletedMatch[]) {
 
 export function leaderboard(
   people: Person[],
-  matches: CompletedMatch[],
+  matches: Match[],
 ): RankedPerson[] {
   const { ratings } = replayRatings(people, matches)
   const stats = new Map(
@@ -72,7 +75,10 @@ export function leaderboard(
       { played: 0, wins: 0, losses: 0, streak: 0 },
     ]),
   )
-  for (const match of [...matches].sort((a, b) => a.sequence - b.sequence)) {
+  for (const match of [...matches].sort(
+    (a, b) => (a.sequence ?? 0) - (b.sequence ?? 0),
+  )) {
+    if (!match.complete || !match.score) continue
     const winner: TeamColor =
       match.score.red > match.score.blue ? 'red' : 'blue'
     for (const participant of match.participants) {

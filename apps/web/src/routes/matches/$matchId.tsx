@@ -18,7 +18,9 @@ function MatchDetail() {
   const people = (useLiveQuery(() => peopleCollection).data ?? []).filter(
     (person) => person.organizationId === organizationId,
   )
-  const matches = useLiveQuery(() => matchesCollection).data ?? []
+  const matches = (useLiveQuery(() => matchesCollection).data ?? []).filter(
+    (match) => match.organizationId === organizationId && match.complete,
+  )
   if (!organization)
     return (
       <AppShell title="Match">
@@ -43,7 +45,9 @@ function MatchDetail() {
       <section className="rounded-lg border border-slate-200 bg-white p-5">
         <div className="mb-4 flex justify-between text-sm text-slate-500">
           <span>{match.format}</span>
-          <time>{new Date(match.completedAt).toLocaleString()}</time>
+          <time>
+            {new Date(match.completedAt ?? match.startedAt).toLocaleString()}
+          </time>
         </div>
         <MatchTeams match={match} people={people} />
         <h2 className="mt-7 font-semibold">Players and rating changes</h2>
