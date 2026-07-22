@@ -50,8 +50,11 @@ export async function resetPeople() {
   window.localStorage.removeItem(storageKey)
 }
 
-export function calculateEloChanges(match: Match) {
-  console.log('TODO: calculate and save player Elo for completed match', match)
+export function calculateEloChanges(match: Match, people: Person[]) {
+  console.log('TODO: calculate and save player Elo for completed match', {
+    match,
+    people,
+  })
   return match.participants.map((participant) => ({
     personId: participant.personId,
     change: 0,

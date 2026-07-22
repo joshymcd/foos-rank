@@ -1,16 +1,16 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useLiveQuery } from '@tanstack/react-db'
-import { AppShell, EmptyOrganization } from '../components/app-shell'
-import { organizationsCollection } from '../collections/organization'
-import { matchesCollection } from '../collections/matches'
-import { peopleCollection } from '../collections/people'
-import { leaderboard } from '../domain/elo'
+import { EmptyOrganization } from '../../components/app-shell'
+import { organizationsCollection } from '../../collections/organization'
+import { matchesCollection } from '../../collections/matches'
+import { peopleCollection } from '../../collections/people'
+import { leaderboard } from '../../domain/elo'
 
-export const Route = createFileRoute('/leaderboard')({
+export const Route = createFileRoute('/$organizationId/leaderboard')({
   component: Leaderboard,
 })
 function Leaderboard() {
-  const { organizationId } = Route.useSearch()
+  const { organizationId } = Route.useParams()
   const organizations = useLiveQuery(() => organizationsCollection).data ?? []
   const organization = organizations.find((item) => item.id === organizationId)
   const people = (useLiveQuery(() => peopleCollection).data ?? []).filter(
@@ -19,14 +19,10 @@ function Leaderboard() {
   const matches = (useLiveQuery(() => matchesCollection).data ?? []).filter(
     (match) => match.organizationId === organizationId && match.complete,
   )
-  if (!organization)
-    return (
-      <AppShell title="Leaderboard">
-        <EmptyOrganization />
-      </AppShell>
-    )
+  if (!organization) return <EmptyOrganization />
   return (
-    <AppShell title="Leaderboard">
+    <>
+      <h1 className="mb-6 text-2xl font-bold tracking-tight">Leaderboard</h1>
       <section className="overflow-hidden rounded-lg border border-slate-200 bg-white">
         <div className="overflow-x-auto">
           <table className="w-full min-w-[620px] text-left text-sm">
@@ -69,6 +65,6 @@ function Leaderboard() {
           </table>
         </div>
       </section>
-    </AppShell>
+    </>
   )
 }

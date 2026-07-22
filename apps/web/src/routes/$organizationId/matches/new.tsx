@@ -1,24 +1,29 @@
-import { Link, createFileRoute, useNavigate } from '@tanstack/react-router'
+import {
+  Link,
+  Navigate,
+  createFileRoute,
+  useNavigate,
+} from '@tanstack/react-router'
 import { useLiveQuery } from '@tanstack/react-db'
 import { useMutation } from '@tanstack/react-query'
 import { useState } from 'react'
-import { AppShell, EmptyOrganization } from '../../components/app-shell'
-import { organizationsCollection } from '../../collections/organization'
+import { EmptyOrganization } from '../../../components/app-shell'
+import { organizationsCollection } from '../../../collections/organization'
 import {
   defaultRoles,
   formats,
   matchesCollection,
   teamSize,
   validateMatch,
-} from '../../collections/matches'
+} from '../../../collections/matches'
 import type {
   MatchFormat,
   MatchParticipant,
   TeamColor,
-} from '../../collections/matches'
-import { calculateEloChanges, peopleCollection } from '../../collections/people'
+} from '../../../collections/matches'
+import { peopleCollection } from '../../../collections/people'
 
-export const Route = createFileRoute('/matches/new')({
+export const Route = createFileRoute('/$organizationId/matches/new')({
   component: NewMatch,
 })
 
@@ -31,29 +36,27 @@ function createParticipants(format: MatchFormat): MatchParticipant[] {
 
 function NewMatch() {
   const navigate = useNavigate()
-  const { organizationId } = Route.useSearch()
+  const { organizationId } = Route.useParams()
   const organizations = useLiveQuery(() => organizationsCollection).data ?? []
   const organization = organizations.find((item) => item.id === organizationId)
   const people = (useLiveQuery(() => peopleCollection).data ?? []).filter(
     (person) => person.organizationId === organizationId,
   )
   const matches = useLiveQuery(() => matchesCollection).data ?? []
-  const active = matches.find(
+  const activeMatch = matches.find(
     (match) => match.organizationId === organizationId && !match.complete,
   )
   const start = useMutation({
     mutationFn: async ({
       format,
       participants,
-      matchOrganizationId,
     }: {
       format: MatchFormat
       participants: MatchParticipant[]
-      matchOrganizationId: string
     }) => {
       const match = matchesCollection.insert({
         id: crypto.randomUUID(),
-        organizationId: matchOrganizationId,
+        organizationId,
         format,
         participants,
         startedAt: new Date().toISOString(),
@@ -64,61 +67,27 @@ function NewMatch() {
         eloChanges: null,
       })
       await match.isPersisted.promise
-    },
-  })
-  const complete = useMutation({
-    mutationFn: async (score: Record<TeamColor, number>) => {
-      const current = Array.from(matchesCollection.values()).find(
-        (match) => match.organizationId === organizationId && !match.complete,
-      )
-      if (!current) throw new Error('There is no active match.')
-      const sequence =
-        Array.from(matchesCollection.values()).filter(
-          (storedMatch) =>
-            storedMatch.organizationId === organizationId &&
-            storedMatch.complete,
-        ).length + 1
-      const completedAt = new Date().toISOString()
-      const eloChanges = calculateEloChanges({
-        ...current,
-        complete: true,
-        sequence,
-        completedAt,
-        score,
-        eloChanges: null,
-      })
-      const match = matchesCollection.update(current.id, (draft) => {
-        draft.complete = true
-        draft.sequence = sequence
-        draft.completedAt = completedAt
-        draft.score = score
-        draft.eloChanges = eloChanges
-      })
-      await match.isPersisted.promise
-    },
-  })
-  const cancel = useMutation({
-    mutationFn: async () => {
-      const current = Array.from(matchesCollection.values()).find(
-        (match) => match.organizationId === organizationId && !match.complete,
-      )
-      if (current)
-        await matchesCollection.delete(current.id).isPersisted.promise
+      return match.id
     },
   })
   const [format, setFormat] = useState<MatchFormat>('1v1')
   const [participants, setParticipants] = useState<MatchParticipant[]>(
     createParticipants('1v1'),
   )
-  const [redScore, setRedScore] = useState('')
-  const [blueScore, setBlueScore] = useState('')
-  if (!organization)
+
+  if (!organization) return <EmptyOrganization />
+
+  if (activeMatch) {
     return (
-      <AppShell title="Start match">
-        <EmptyOrganization />
-      </AppShell>
+      <Navigate
+        to="/$organizationId/matches/$matchId"
+        params={{ organizationId, matchId: activeMatch.id }}
+      />
     )
-  const error = start.error ?? complete.error ?? cancel.error
+  }
+
+  const error = start.error
+  const configurationError = validateMatch(format, participants)
   const setPlayer = (index: number, personId: string) =>
     setParticipants((current) =>
       current.map((participant, itemIndex) =>
@@ -131,73 +100,10 @@ function NewMatch() {
         itemIndex === index ? { ...participant, role } : participant,
       ),
     )
-  if (active) {
-    const score = { red: Number(redScore), blue: Number(blueScore) }
-    const scoreError =
-      redScore === '' || blueScore === ''
-        ? undefined
-        : validateMatch(active.format, active.participants, score)
-    return (
-      <AppShell title="Enter score">
-        <section className="max-w-2xl rounded-lg border border-slate-200 bg-white p-5">
-          <p className="text-sm text-slate-500">
-            {active.format} started{' '}
-            {new Date(active.startedAt).toLocaleTimeString()}
-          </p>
-          <div className="mt-6 grid grid-cols-2 gap-4">
-            <ScoreInput
-              label="Red score"
-              value={redScore}
-              onChange={setRedScore}
-              tone="red"
-            />
-            <ScoreInput
-              label="Blue score"
-              value={blueScore}
-              onChange={setBlueScore}
-              tone="blue"
-            />
-          </div>
-          {(scoreError || error) && (
-            <p role="alert" className="mt-4 text-sm text-red-700">
-              {scoreError ?? error?.message}
-            </p>
-          )}
-          <div className="mt-6 flex flex-wrap gap-3">
-            <button
-              disabled={
-                complete.isPending ||
-                Boolean(scoreError) ||
-                redScore === '' ||
-                blueScore === ''
-              }
-              onClick={() =>
-                complete.mutate(score, {
-                  onSuccess: () => navigate({ to: '/matches' }),
-                })
-              }
-              className="rounded-md bg-emerald-700 px-4 py-2 font-semibold text-white disabled:opacity-50"
-            >
-              Save result
-            </button>
-            <button
-              onClick={() =>
-                cancel.mutate(undefined, {
-                  onSuccess: () => navigate({ to: '/overview' }),
-                })
-              }
-              className="rounded-md border border-slate-300 px-4 py-2 font-semibold"
-            >
-              Cancel match
-            </button>
-          </div>
-        </section>
-      </AppShell>
-    )
-  }
-  const configurationError = validateMatch(format, participants)
+
   return (
-    <AppShell title="Start match">
+    <>
+      <h1 className="mb-6 text-2xl font-bold tracking-tight">Start match</h1>
       <section className="max-w-3xl rounded-lg border border-slate-200 bg-white p-5">
         <fieldset>
           <legend className="font-semibold">Match format</legend>
@@ -248,11 +154,16 @@ function NewMatch() {
         <button
           disabled={start.isPending || Boolean(configurationError)}
           onClick={() =>
-            start.mutate({
-              format,
-              participants,
-              matchOrganizationId: organization.id,
-            })
+            start.mutate(
+              { format, participants },
+              {
+                onSuccess: (matchId) =>
+                  navigate({
+                    to: '/$organizationId/matches/$matchId',
+                    params: { organizationId, matchId },
+                  }),
+              },
+            )
           }
           className="mt-6 rounded-md bg-emerald-700 px-4 py-2 font-semibold text-white disabled:opacity-50"
         >
@@ -261,14 +172,18 @@ function NewMatch() {
         {people.length < 2 && (
           <p className="mt-3 text-sm text-slate-500">
             Add at least two people in{' '}
-            <Link to="/people" className="underline">
+            <Link
+              to="/$organizationId/people"
+              params={{ organizationId }}
+              className="underline"
+            >
               People
             </Link>{' '}
             first.
           </p>
         )}
       </section>
-    </AppShell>
+    </>
   )
 }
 
@@ -315,7 +230,7 @@ function TeamBuilder({
                 ))}
               </select>
             </label>
-            {indexes.length > 1 && (
+            {indexes.length > 1 ? (
               <label className="text-sm font-medium">
                 Position
                 <select
@@ -324,9 +239,8 @@ function TeamBuilder({
                     if (
                       event.target.value === 'attack' ||
                       event.target.value === 'defence'
-                    ) {
+                    )
                       setRole(index, event.target.value)
-                    }
                   }}
                   className="mt-1 w-full rounded-md border border-slate-300 bg-white px-3 py-2"
                 >
@@ -334,42 +248,12 @@ function TeamBuilder({
                   <option value="defence">Defence</option>
                 </select>
               </label>
-            )}{' '}
-            {indexes.length === 1 && (
+            ) : (
               <p className="text-xs text-slate-600">Position: both</p>
             )}
           </div>
         ))}
       </div>
     </fieldset>
-  )
-}
-
-function ScoreInput({
-  label,
-  value,
-  onChange,
-  tone,
-}: {
-  label: string
-  value: string
-  onChange: (value: string) => void
-  tone: 'red' | 'blue'
-}) {
-  return (
-    <label
-      className={`rounded-lg p-4 ${tone === 'red' ? 'bg-red-50' : 'bg-blue-50'}`}
-    >
-      <span className="block text-sm font-semibold">{label}</span>
-      <input
-        inputMode="numeric"
-        type="number"
-        min="0"
-        max="99"
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        className="mt-2 w-full rounded-md border border-slate-300 bg-white px-3 py-3 text-3xl font-bold tabular-nums"
-      />
-    </label>
   )
 }

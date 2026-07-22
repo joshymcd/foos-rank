@@ -2,15 +2,17 @@ import { createFileRoute } from '@tanstack/react-router'
 import { useLiveQuery } from '@tanstack/react-db'
 import { useMutation } from '@tanstack/react-query'
 import { useState } from 'react'
-import { AppShell, EmptyOrganization } from '../components/app-shell'
-import { organizationsCollection } from '../collections/organization'
-import { matchesCollection } from '../collections/matches'
-import { peopleCollection } from '../collections/people'
-import { leaderboard } from '../domain/elo'
+import { EmptyOrganization } from '../../components/app-shell'
+import { organizationsCollection } from '../../collections/organization'
+import { matchesCollection } from '../../collections/matches'
+import { peopleCollection } from '../../collections/people'
+import { leaderboard } from '../../domain/elo'
 
-export const Route = createFileRoute('/people')({ component: People })
+export const Route = createFileRoute('/$organizationId/people')({
+  component: People,
+})
 function People() {
-  const { organizationId } = Route.useSearch()
+  const { organizationId } = Route.useParams()
   const organizations = useLiveQuery(() => organizationsCollection).data ?? []
   const organization = organizations.find((item) => item.id === organizationId)
   const people = (useLiveQuery(() => peopleCollection).data ?? []).filter(
@@ -39,15 +41,11 @@ function People() {
     },
   })
   const [name, setName] = useState('')
-  if (!organization)
-    return (
-      <AppShell title="People">
-        <EmptyOrganization />
-      </AppShell>
-    )
+  if (!organization) return <EmptyOrganization />
   const rankedPeople = leaderboard(people, matches)
   return (
-    <AppShell title="People">
+    <>
+      <h1 className="mb-6 text-2xl font-bold tracking-tight">People</h1>
       <section className="rounded-lg border border-slate-200 bg-white p-5">
         <h2 className="font-semibold">Add a player</h2>
         <form
@@ -105,6 +103,6 @@ function People() {
           ))}
         </div>
       </section>
-    </AppShell>
+    </>
   )
 }

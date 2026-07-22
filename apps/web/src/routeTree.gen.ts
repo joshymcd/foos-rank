@@ -10,128 +10,124 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as LeaderboardRouteImport } from './routes/leaderboard'
-import { Route as OverviewRouteImport } from './routes/overview'
-import { Route as PeopleRouteImport } from './routes/people'
-import { Route as SetupRouteImport } from './routes/setup'
-import { Route as MatchesIndexRouteImport } from './routes/matches/index'
-import { Route as MatchesMatchIdRouteImport } from './routes/matches/$matchId'
-import { Route as MatchesNewRouteImport } from './routes/matches/new'
+import { Route as OrganizationIdRouteRouteImport } from './routes/$organizationId/route'
+import { Route as OrganizationIdIndexRouteImport } from './routes/$organizationId/index'
+import { Route as OrganizationIdLeaderboardRouteImport } from './routes/$organizationId/leaderboard'
+import { Route as OrganizationIdPeopleRouteImport } from './routes/$organizationId/people'
+import { Route as OrganizationIdMatchesIndexRouteImport } from './routes/$organizationId/matches/index'
+import { Route as OrganizationIdMatchesMatchIdRouteImport } from './routes/$organizationId/matches/$matchId'
+import { Route as OrganizationIdMatchesNewRouteImport } from './routes/$organizationId/matches/new'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const LeaderboardRoute = LeaderboardRouteImport.update({
-  id: '/leaderboard',
-  path: '/leaderboard',
+const OrganizationIdRouteRoute = OrganizationIdRouteRouteImport.update({
+  id: '/$organizationId',
+  path: '/$organizationId',
   getParentRoute: () => rootRouteImport,
 } as any)
-const OverviewRoute = OverviewRouteImport.update({
-  id: '/overview',
-  path: '/overview',
-  getParentRoute: () => rootRouteImport,
+const OrganizationIdIndexRoute = OrganizationIdIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => OrganizationIdRouteRoute,
 } as any)
-const PeopleRoute = PeopleRouteImport.update({
+const OrganizationIdLeaderboardRoute =
+  OrganizationIdLeaderboardRouteImport.update({
+    id: '/leaderboard',
+    path: '/leaderboard',
+    getParentRoute: () => OrganizationIdRouteRoute,
+  } as any)
+const OrganizationIdPeopleRoute = OrganizationIdPeopleRouteImport.update({
   id: '/people',
   path: '/people',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => OrganizationIdRouteRoute,
 } as any)
-const SetupRoute = SetupRouteImport.update({
-  id: '/setup',
-  path: '/setup',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const MatchesIndexRoute = MatchesIndexRouteImport.update({
-  id: '/matches/',
-  path: '/matches/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const MatchesMatchIdRoute = MatchesMatchIdRouteImport.update({
-  id: '/matches/$matchId',
-  path: '/matches/$matchId',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const MatchesNewRoute = MatchesNewRouteImport.update({
-  id: '/matches/new',
-  path: '/matches/new',
-  getParentRoute: () => rootRouteImport,
-} as any)
+const OrganizationIdMatchesIndexRoute =
+  OrganizationIdMatchesIndexRouteImport.update({
+    id: '/matches/',
+    path: '/matches/',
+    getParentRoute: () => OrganizationIdRouteRoute,
+  } as any)
+const OrganizationIdMatchesMatchIdRoute =
+  OrganizationIdMatchesMatchIdRouteImport.update({
+    id: '/matches/$matchId',
+    path: '/matches/$matchId',
+    getParentRoute: () => OrganizationIdRouteRoute,
+  } as any)
+const OrganizationIdMatchesNewRoute =
+  OrganizationIdMatchesNewRouteImport.update({
+    id: '/matches/new',
+    path: '/matches/new',
+    getParentRoute: () => OrganizationIdRouteRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/leaderboard': typeof LeaderboardRoute
-  '/overview': typeof OverviewRoute
-  '/people': typeof PeopleRoute
-  '/setup': typeof SetupRoute
-  '/matches/$matchId': typeof MatchesMatchIdRoute
-  '/matches/new': typeof MatchesNewRoute
-  '/matches/': typeof MatchesIndexRoute
+  '/$organizationId': typeof OrganizationIdRouteRouteWithChildren
+  '/$organizationId/leaderboard': typeof OrganizationIdLeaderboardRoute
+  '/$organizationId/people': typeof OrganizationIdPeopleRoute
+  '/$organizationId/': typeof OrganizationIdIndexRoute
+  '/$organizationId/matches/$matchId': typeof OrganizationIdMatchesMatchIdRoute
+  '/$organizationId/matches/new': typeof OrganizationIdMatchesNewRoute
+  '/$organizationId/matches/': typeof OrganizationIdMatchesIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/leaderboard': typeof LeaderboardRoute
-  '/overview': typeof OverviewRoute
-  '/people': typeof PeopleRoute
-  '/setup': typeof SetupRoute
-  '/matches/$matchId': typeof MatchesMatchIdRoute
-  '/matches/new': typeof MatchesNewRoute
-  '/matches': typeof MatchesIndexRoute
+  '/$organizationId/leaderboard': typeof OrganizationIdLeaderboardRoute
+  '/$organizationId/people': typeof OrganizationIdPeopleRoute
+  '/$organizationId': typeof OrganizationIdIndexRoute
+  '/$organizationId/matches/$matchId': typeof OrganizationIdMatchesMatchIdRoute
+  '/$organizationId/matches/new': typeof OrganizationIdMatchesNewRoute
+  '/$organizationId/matches': typeof OrganizationIdMatchesIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/leaderboard': typeof LeaderboardRoute
-  '/overview': typeof OverviewRoute
-  '/people': typeof PeopleRoute
-  '/setup': typeof SetupRoute
-  '/matches/$matchId': typeof MatchesMatchIdRoute
-  '/matches/new': typeof MatchesNewRoute
-  '/matches/': typeof MatchesIndexRoute
+  '/$organizationId': typeof OrganizationIdRouteRouteWithChildren
+  '/$organizationId/leaderboard': typeof OrganizationIdLeaderboardRoute
+  '/$organizationId/people': typeof OrganizationIdPeopleRoute
+  '/$organizationId/': typeof OrganizationIdIndexRoute
+  '/$organizationId/matches/$matchId': typeof OrganizationIdMatchesMatchIdRoute
+  '/$organizationId/matches/new': typeof OrganizationIdMatchesNewRoute
+  '/$organizationId/matches/': typeof OrganizationIdMatchesIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
-    | '/leaderboard'
-    | '/overview'
-    | '/people'
-    | '/setup'
-    | '/matches/$matchId'
-    | '/matches/new'
-    | '/matches/'
+    | '/$organizationId'
+    | '/$organizationId/leaderboard'
+    | '/$organizationId/people'
+    | '/$organizationId/'
+    | '/$organizationId/matches/$matchId'
+    | '/$organizationId/matches/new'
+    | '/$organizationId/matches/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/leaderboard'
-    | '/overview'
-    | '/people'
-    | '/setup'
-    | '/matches/$matchId'
-    | '/matches/new'
-    | '/matches'
+    | '/$organizationId/leaderboard'
+    | '/$organizationId/people'
+    | '/$organizationId'
+    | '/$organizationId/matches/$matchId'
+    | '/$organizationId/matches/new'
+    | '/$organizationId/matches'
   id:
     | '__root__'
     | '/'
-    | '/leaderboard'
-    | '/overview'
-    | '/people'
-    | '/setup'
-    | '/matches/$matchId'
-    | '/matches/new'
-    | '/matches/'
+    | '/$organizationId'
+    | '/$organizationId/leaderboard'
+    | '/$organizationId/people'
+    | '/$organizationId/'
+    | '/$organizationId/matches/$matchId'
+    | '/$organizationId/matches/new'
+    | '/$organizationId/matches/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  LeaderboardRoute: typeof LeaderboardRoute
-  OverviewRoute: typeof OverviewRoute
-  PeopleRoute: typeof PeopleRoute
-  SetupRoute: typeof SetupRoute
-  MatchesMatchIdRoute: typeof MatchesMatchIdRoute
-  MatchesNewRoute: typeof MatchesNewRoute
-  MatchesIndexRoute: typeof MatchesIndexRoute
+  OrganizationIdRouteRoute: typeof OrganizationIdRouteRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
@@ -143,67 +139,82 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/leaderboard': {
-      id: '/leaderboard'
+    '/$organizationId': {
+      id: '/$organizationId'
+      path: '/$organizationId'
+      fullPath: '/$organizationId'
+      preLoaderRoute: typeof OrganizationIdRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/$organizationId/': {
+      id: '/$organizationId/'
+      path: '/'
+      fullPath: '/$organizationId/'
+      preLoaderRoute: typeof OrganizationIdIndexRouteImport
+      parentRoute: typeof OrganizationIdRouteRoute
+    }
+    '/$organizationId/leaderboard': {
+      id: '/$organizationId/leaderboard'
       path: '/leaderboard'
-      fullPath: '/leaderboard'
-      preLoaderRoute: typeof LeaderboardRouteImport
-      parentRoute: typeof rootRouteImport
+      fullPath: '/$organizationId/leaderboard'
+      preLoaderRoute: typeof OrganizationIdLeaderboardRouteImport
+      parentRoute: typeof OrganizationIdRouteRoute
     }
-    '/overview': {
-      id: '/overview'
-      path: '/overview'
-      fullPath: '/overview'
-      preLoaderRoute: typeof OverviewRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/people': {
-      id: '/people'
+    '/$organizationId/people': {
+      id: '/$organizationId/people'
       path: '/people'
-      fullPath: '/people'
-      preLoaderRoute: typeof PeopleRouteImport
-      parentRoute: typeof rootRouteImport
+      fullPath: '/$organizationId/people'
+      preLoaderRoute: typeof OrganizationIdPeopleRouteImport
+      parentRoute: typeof OrganizationIdRouteRoute
     }
-    '/setup': {
-      id: '/setup'
-      path: '/setup'
-      fullPath: '/setup'
-      preLoaderRoute: typeof SetupRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/matches/': {
-      id: '/matches/'
+    '/$organizationId/matches/': {
+      id: '/$organizationId/matches/'
       path: '/matches'
-      fullPath: '/matches/'
-      preLoaderRoute: typeof MatchesIndexRouteImport
-      parentRoute: typeof rootRouteImport
+      fullPath: '/$organizationId/matches/'
+      preLoaderRoute: typeof OrganizationIdMatchesIndexRouteImport
+      parentRoute: typeof OrganizationIdRouteRoute
     }
-    '/matches/$matchId': {
-      id: '/matches/$matchId'
+    '/$organizationId/matches/$matchId': {
+      id: '/$organizationId/matches/$matchId'
       path: '/matches/$matchId'
-      fullPath: '/matches/$matchId'
-      preLoaderRoute: typeof MatchesMatchIdRouteImport
-      parentRoute: typeof rootRouteImport
+      fullPath: '/$organizationId/matches/$matchId'
+      preLoaderRoute: typeof OrganizationIdMatchesMatchIdRouteImport
+      parentRoute: typeof OrganizationIdRouteRoute
     }
-    '/matches/new': {
-      id: '/matches/new'
+    '/$organizationId/matches/new': {
+      id: '/$organizationId/matches/new'
       path: '/matches/new'
-      fullPath: '/matches/new'
-      preLoaderRoute: typeof MatchesNewRouteImport
-      parentRoute: typeof rootRouteImport
+      fullPath: '/$organizationId/matches/new'
+      preLoaderRoute: typeof OrganizationIdMatchesNewRouteImport
+      parentRoute: typeof OrganizationIdRouteRoute
     }
   }
 }
 
+interface OrganizationIdRouteRouteChildren {
+  OrganizationIdLeaderboardRoute: typeof OrganizationIdLeaderboardRoute
+  OrganizationIdPeopleRoute: typeof OrganizationIdPeopleRoute
+  OrganizationIdIndexRoute: typeof OrganizationIdIndexRoute
+  OrganizationIdMatchesMatchIdRoute: typeof OrganizationIdMatchesMatchIdRoute
+  OrganizationIdMatchesNewRoute: typeof OrganizationIdMatchesNewRoute
+  OrganizationIdMatchesIndexRoute: typeof OrganizationIdMatchesIndexRoute
+}
+
+const OrganizationIdRouteRouteChildren: OrganizationIdRouteRouteChildren = {
+  OrganizationIdLeaderboardRoute: OrganizationIdLeaderboardRoute,
+  OrganizationIdPeopleRoute: OrganizationIdPeopleRoute,
+  OrganizationIdIndexRoute: OrganizationIdIndexRoute,
+  OrganizationIdMatchesMatchIdRoute: OrganizationIdMatchesMatchIdRoute,
+  OrganizationIdMatchesNewRoute: OrganizationIdMatchesNewRoute,
+  OrganizationIdMatchesIndexRoute: OrganizationIdMatchesIndexRoute,
+}
+
+const OrganizationIdRouteRouteWithChildren =
+  OrganizationIdRouteRoute._addFileChildren(OrganizationIdRouteRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  LeaderboardRoute: LeaderboardRoute,
-  OverviewRoute: OverviewRoute,
-  PeopleRoute: PeopleRoute,
-  SetupRoute: SetupRoute,
-  MatchesMatchIdRoute: MatchesMatchIdRoute,
-  MatchesNewRoute: MatchesNewRoute,
-  MatchesIndexRoute: MatchesIndexRoute,
+  OrganizationIdRouteRoute: OrganizationIdRouteRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

@@ -6,19 +6,12 @@ import { resetOrganization } from '../collections/organization'
 import { resetPeople } from '../collections/people'
 import { queryClient } from '../collections'
 
-const navigation = [
-  ['Overview', '/overview'],
-  ['Leaderboard', '/leaderboard'],
-  ['People', '/people'],
-  ['Matches', '/matches'],
-] as const
-
 export function AppShell({
-  title,
   children,
+  organizationId,
 }: {
-  title: string
   children: ReactNode
+  organizationId: string
 }) {
   const reset = useMutation({
     mutationFn: async () => {
@@ -36,13 +29,14 @@ export function AppShell({
       <header className="border-b border-slate-200 bg-white">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-4 sm:px-6">
           <Link
-            to="/overview"
+            to="/"
             className="text-xl font-bold tracking-tight text-slate-900"
           >
             FoosRank
           </Link>
           <Link
-            to="/matches/new"
+            to="/$organizationId/matches/new"
+            params={{ organizationId }}
             className="rounded-md bg-emerald-700 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-800"
           >
             Start match
@@ -52,21 +46,42 @@ export function AppShell({
           aria-label="Main navigation"
           className="mx-auto flex max-w-6xl gap-1 overflow-x-auto px-4 sm:px-6"
         >
-          {navigation.map(([label, to]) => (
-            <Link
-              key={to}
-              to={to}
-              activeProps={{ className: 'border-emerald-700 text-emerald-800' }}
-              className="border-b-2 border-transparent px-3 py-3 text-sm font-medium text-slate-600 hover:text-slate-950"
-            >
-              {label}
-            </Link>
-          ))}
+          <Link
+            to="/$organizationId"
+            params={{ organizationId }}
+            activeProps={{ className: 'border-emerald-700 text-emerald-800' }}
+            className="border-b-2 border-transparent px-3 py-3 text-sm font-medium text-slate-600 hover:text-slate-950"
+          >
+            Overview
+          </Link>
+          <Link
+            to="/$organizationId/leaderboard"
+            params={{ organizationId }}
+            activeProps={{ className: 'border-emerald-700 text-emerald-800' }}
+            className="border-b-2 border-transparent px-3 py-3 text-sm font-medium text-slate-600 hover:text-slate-950"
+          >
+            Leaderboard
+          </Link>
+          <Link
+            to="/$organizationId/people"
+            params={{ organizationId }}
+            activeProps={{ className: 'border-emerald-700 text-emerald-800' }}
+            className="border-b-2 border-transparent px-3 py-3 text-sm font-medium text-slate-600 hover:text-slate-950"
+          >
+            People
+          </Link>
+          <Link
+            to="/$organizationId/matches"
+            params={{ organizationId }}
+            activeProps={{ className: 'border-emerald-700 text-emerald-800' }}
+            className="border-b-2 border-transparent px-3 py-3 text-sm font-medium text-slate-600 hover:text-slate-950"
+          >
+            Matches
+          </Link>
         </nav>
       </header>
       <main id="content" className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
-        <div className="mb-6 flex items-center justify-between gap-4">
-          <h1 className="text-2xl font-bold tracking-tight">{title}</h1>
+        <div className="mb-6 flex justify-end">
           <button
             type="button"
             onClick={() => {

@@ -1,17 +1,17 @@
 import { Link, createFileRoute } from '@tanstack/react-router'
 import { useLiveQuery } from '@tanstack/react-db'
-import { AppShell, EmptyOrganization } from '../components/app-shell'
-import { MatchTeams } from '../components/match-teams'
-import { organizationsCollection } from '../collections/organization'
-import { matchesCollection } from '../collections/matches'
-import { peopleCollection } from '../collections/people'
-import { leaderboard } from '../domain/elo'
+import { EmptyOrganization } from '../../components/app-shell'
+import { MatchTeams } from '../../components/match-teams'
+import { organizationsCollection } from '../../collections/organization'
+import { matchesCollection } from '../../collections/matches'
+import { peopleCollection } from '../../collections/people'
+import { leaderboard } from '../../domain/elo'
 
-export const Route = createFileRoute('/overview')({
+export const Route = createFileRoute('/$organizationId/')({
   component: Overview,
 })
 function Overview() {
-  const { organizationId } = Route.useSearch()
+  const { organizationId } = Route.useParams()
   const organizations = useLiveQuery(() => organizationsCollection).data ?? []
   const organization = organizations.find((item) => item.id === organizationId)
   const people = (useLiveQuery(() => peopleCollection).data ?? []).filter(
@@ -24,21 +24,20 @@ function Overview() {
   const activeMatch = allMatches.find(
     (match) => match.organizationId === organizationId && !match.complete,
   )
-  if (!organization)
-    return (
-      <AppShell title="Overview">
-        <EmptyOrganization />
-      </AppShell>
-    )
+  if (!organization) return <EmptyOrganization />
   const ranks = leaderboard(people, matches)
   return (
-    <AppShell title={organization.name}>
+    <>
+      <h1 className="mb-6 text-2xl font-bold tracking-tight">
+        {organization.name}
+      </h1>
       <div className="grid gap-5 lg:grid-cols-3">
         <section className="rounded-lg border border-slate-200 bg-white p-5 lg:col-span-2">
           <div className="flex items-center justify-between">
             <h2 className="font-semibold">Leaderboard</h2>
             <Link
-              to="/leaderboard"
+              to="/$organizationId/leaderboard"
+              params={{ organizationId }}
               className="text-sm text-emerald-700 underline"
             >
               View all
@@ -77,7 +76,8 @@ function Overview() {
           </dl>
           {activeMatch && (
             <Link
-              to="/matches/new"
+              to="/$organizationId/matches/$matchId"
+              params={{ organizationId, matchId: activeMatch.id }}
               className="mt-5 block rounded bg-amber-50 p-3 text-sm font-medium text-amber-900"
             >
               Resume active match
@@ -88,7 +88,11 @@ function Overview() {
       <section className="mt-5 rounded-lg border border-slate-200 bg-white p-5">
         <div className="flex items-center justify-between">
           <h2 className="font-semibold">Recent matches</h2>
-          <Link to="/matches" className="text-sm text-emerald-700 underline">
+          <Link
+            to="/$organizationId/matches"
+            params={{ organizationId }}
+            className="text-sm text-emerald-700 underline"
+          >
             History
           </Link>
         </div>
@@ -104,6 +108,6 @@ function Overview() {
           )}
         </div>
       </section>
-    </AppShell>
+    </>
   )
 }
