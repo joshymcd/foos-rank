@@ -13,12 +13,21 @@ function People() {
   const { organizationId } = Route.useSearch()
   const organizations = useLiveQuery(() => organizationsCollection).data ?? []
   const organization = organizations.find((item) => item.id === organizationId)
-  const people = useLiveQuery(() => peopleCollection).data ?? []
+  const people = (useLiveQuery(() => peopleCollection).data ?? []).filter(
+    (person) => person.organizationId === organizationId,
+  )
   const matches = useLiveQuery(() => matchesCollection).data ?? []
   const add = useMutation({
-    mutationFn: async (name: string) => {
+    mutationFn: async ({
+      name,
+      personOrganizationId,
+    }: {
+      name: string
+      personOrganizationId: string
+    }) => {
       const person = peopleCollection.insert({
         id: crypto.randomUUID(),
+        organizationId: personOrganizationId,
         name: name.trim(),
         normalizedName: name.trim().toLowerCase(),
         createdAt: new Date().toISOString(),
@@ -41,7 +50,10 @@ function People() {
         <form
           onSubmit={(event) => {
             event.preventDefault()
-            add.mutate(name, { onSuccess: () => setName('') })
+            add.mutate(
+              { name, personOrganizationId: organization.id },
+              { onSuccess: () => setName('') },
+            )
           }}
           className="mt-3 flex flex-col gap-2 sm:flex-row"
         >

@@ -28,6 +28,7 @@ function Setup() {
       await organization.isPersisted.promise
       const person = peopleCollection.insert({
         id: crypto.randomUUID(),
+        organizationId,
         name: personName.trim(),
         normalizedName: personName.trim().toLowerCase(),
         createdAt: new Date().toISOString(),
