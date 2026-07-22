@@ -1,0 +1,11 @@
+packages:
+  - apps/*
+
+catalog:
+  sst: ^4.17.1
+  typescript: ^6.0.3
+
+allowBuilds:
+  esbuild: true
+  lightningcss: true
+  unrs-resolver: true
