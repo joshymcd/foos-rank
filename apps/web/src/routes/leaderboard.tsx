@@ -1,0 +1,70 @@
+import { createFileRoute } from '@tanstack/react-router'
+import { useLiveQuery } from '@tanstack/react-db'
+import { AppShell, EmptyOrganization } from '../components/app-shell'
+import { organizationsCollection } from '../collections/organization'
+import { matchesCollection } from '../collections/matches'
+import { peopleCollection } from '../collections/people'
+import { leaderboard } from '../domain/elo'
+
+export const Route = createFileRoute('/leaderboard')({
+  component: Leaderboard,
+})
+function Leaderboard() {
+  const organization = (
+    useLiveQuery(() => organizationsCollection).data ?? []
+  ).at(0)
+  const people = useLiveQuery(() => peopleCollection).data ?? []
+  const matches = useLiveQuery(() => matchesCollection).data ?? []
+  if (!organization)
+    return (
+      <AppShell title="Leaderboard">
+        <EmptyOrganization />
+      </AppShell>
+    )
+  return (
+    <AppShell title="Leaderboard">
+      <section className="overflow-hidden rounded-lg border border-slate-200 bg-white">
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[620px] text-left text-sm">
+            <thead className="bg-slate-50 text-slate-500">
+              <tr>
+                <th className="px-5 py-3">Rank</th>
+                <th className="px-5 py-3">Player</th>
+                <th className="px-5 py-3 text-right">Elo</th>
+                <th className="px-5 py-3 text-right">Played</th>
+                <th className="px-5 py-3 text-right">Record</th>
+                <th className="px-5 py-3 text-right">Streak</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {leaderboard(people, matches).map((person) => (
+                <tr key={person.id}>
+                  <td className="px-5 py-4 font-semibold text-slate-500">
+                    #{person.rank}
+                  </td>
+                  <td className="px-5 py-4 font-medium">{person.name}</td>
+                  <td className="px-5 py-4 text-right font-bold tabular-nums">
+                    {Math.round(person.rating)}
+                  </td>
+                  <td className="px-5 py-4 text-right tabular-nums">
+                    {person.played}
+                  </td>
+                  <td className="px-5 py-4 text-right tabular-nums">
+                    {person.wins}W - {person.losses}L
+                  </td>
+                  <td className="px-5 py-4 text-right tabular-nums">
+                    {person.streak > 0
+                      ? `${person.streak}W`
+                      : person.streak < 0
+                        ? `${Math.abs(person.streak)}L`
+                        : '—'}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </AppShell>
+  )
+}

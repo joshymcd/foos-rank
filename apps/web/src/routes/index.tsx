@@ -1,14 +1,9 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { Navigate, createFileRoute } from '@tanstack/react-router'
+import { useLiveQuery } from '@tanstack/react-db'
+import { organizationsCollection } from '../collections/organization'
 
 export const Route = createFileRoute('/')({ component: Home })
-
 function Home() {
-  return (
-    <div className="p-8">
-      <h1 className="text-4xl font-bold">Welcome to TanStack Start</h1>
-      <p className="mt-4 text-lg">
-        Edit <code>src/routes/index.tsx</code> to get started.
-      </p>
-    </div>
-  )
+  const organizations = useLiveQuery(() => organizationsCollection).data ?? []
+  return <Navigate to={organizations.at(0) ? '/overview' : '/setup'} />
 }
