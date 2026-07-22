@@ -1,5 +1,5 @@
 {
-  "name": "@foosball-tracker/web",
+  "name": "@foos-rank/web",
   "private": true,
   "type": "module",
   "imports": {

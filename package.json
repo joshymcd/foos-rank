@@ -1,8 +1,9 @@
 {
-  "name": "foosball-tracker",
+  "name": "foos-rank",
   "private": true,
   "scripts": {
-    "dev": "sst dev",
+    "dev": "pnpm --filter @foos-rank/web dev",
+    "sst:dev": "sst dev",
     "deploy": "sst deploy"
   },
   "devDependencies": {
