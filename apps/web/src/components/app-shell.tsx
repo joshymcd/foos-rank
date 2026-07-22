@@ -2,6 +2,7 @@ import { Link } from '@tanstack/react-router'
 import { useMutation } from '@tanstack/react-query'
 import type { ReactNode } from 'react'
 import { resetData } from '../collections/mock-api'
+import { resetOrganization } from '../collections/organization'
 import { queryClient } from '../query-client'
 
 const navigation = [
@@ -21,6 +22,7 @@ export function AppShell({
   const reset = useMutation({
     mutationFn: async () => {
       await resetData()
+      await resetOrganization()
       await queryClient.invalidateQueries({ queryKey: ['foosrank'] })
     },
   })

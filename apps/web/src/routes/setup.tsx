@@ -1,25 +1,27 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
+import { useLiveQuery } from '@tanstack/react-db'
 import { useMutation } from '@tanstack/react-query'
 import { useState } from 'react'
 import { organizationsCollection } from '../collections/organization'
-import { loadDemo } from '../collections/mock-api'
 import { peopleCollection } from '../collections/people'
-import { queryClient } from '../query-client'
 
 export const Route = createFileRoute('/setup')({ component: Setup })
 
 function Setup() {
   const navigate = useNavigate()
+  const organizations = useLiveQuery(() => organizationsCollection).data ?? []
   const createOrganization = useMutation({
     mutationFn: async ({
       organizationName,
       personName,
+      organizationId,
     }: {
       organizationName: string
       personName: string
+      organizationId: string
     }) => {
       const organization = organizationsCollection.insert({
-        id: crypto.randomUUID(),
+        id: organizationId,
         name: organizationName.trim(),
         createdAt: new Date().toISOString(),
       })
@@ -33,20 +35,22 @@ function Setup() {
       await person.isPersisted.promise
     },
   })
-  const demoMutation = useMutation({
-    mutationFn: async () => {
-      await loadDemo()
-      await queryClient.invalidateQueries({ queryKey: ['foosrank'] })
-    },
-  })
   const [organizationName, setOrganizationName] = useState('')
   const [personName, setPersonName] = useState('')
-  const error = createOrganization.error ?? demoMutation.error
+  const error = createOrganization.error
   const submit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
+    const organizationId = organizationName
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-|-$/g, '')
     createOrganization.mutate(
-      { organizationName, personName },
-      { onSuccess: () => navigate({ to: '/overview' }) },
+      { organizationName, personName, organizationId },
+      {
+        onSuccess: () =>
+          navigate({ to: '/overview', search: { organizationId } }),
+      },
     )
   }
   return (
@@ -54,9 +58,7 @@ function Setup() {
       <section className="w-full max-w-md rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
         <p className="mb-2 text-sm font-semibold text-emerald-700">FoosRank</p>
         <h1 className="text-2xl font-bold">Create your organization</h1>
-        <p className="mt-2 text-sm text-slate-600">
-          This prototype uses temporary dummy data.
-        </p>
+        <p className="mt-2 text-sm text-slate-600">Stored in this browser.</p>
         <form onSubmit={submit} className="mt-6 space-y-4">
           <label className="block text-sm font-medium">
             Organization name
@@ -90,18 +92,28 @@ function Setup() {
             Create organization
           </button>
         </form>
-        <button
-          type="button"
-          disabled={demoMutation.isPending}
-          onClick={() =>
-            demoMutation.mutate(undefined, {
-              onSuccess: () => navigate({ to: '/overview' }),
-            })
-          }
-          className="mt-3 w-full rounded-md border border-slate-300 px-4 py-2 text-sm font-semibold"
-        >
-          Load sample organization
-        </button>
+        {organizations.length > 0 && (
+          <section className="mt-6 border-t border-slate-200 pt-6">
+            <h2 className="font-semibold">Your organizations</h2>
+            <div className="mt-3 space-y-2">
+              {organizations.map((organization) => (
+                <button
+                  key={organization.id}
+                  type="button"
+                  onClick={() =>
+                    navigate({
+                      to: '/overview',
+                      search: { organizationId: organization.id },
+                    })
+                  }
+                  className="w-full rounded-md border border-slate-300 px-3 py-2 text-left text-sm font-medium hover:bg-slate-50"
+                >
+                  {organization.name}
+                </button>
+              ))}
+            </div>
+          </section>
+        )}
       </section>
     </main>
   )

@@ -32,9 +32,9 @@ function createParticipants(format: MatchFormat): MatchParticipant[] {
 
 function NewMatch() {
   const navigate = useNavigate()
-  const organization = (
-    useLiveQuery(() => organizationsCollection).data ?? []
-  ).at(0)
+  const { organizationId } = Route.useSearch()
+  const organizations = useLiveQuery(() => organizationsCollection).data ?? []
+  const organization = organizations.find((item) => item.id === organizationId)
   const people = useLiveQuery(() => peopleCollection).data ?? []
   const active = (useLiveQuery(() => activeMatchesCollection).data ?? []).at(0)
   const start = useMutation({

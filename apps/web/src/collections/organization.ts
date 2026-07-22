@@ -2,7 +2,6 @@ import { createCollection } from '@tanstack/db'
 import { queryCollectionOptions } from '@tanstack/query-db-collection'
 import { z } from 'zod'
 import { queryClient } from '../query-client'
-import { createOrganization, listOrganizations } from './mock-api'
 
 export const organizationSchema = z.object({
   id: z.string(),
@@ -11,6 +10,37 @@ export const organizationSchema = z.object({
 })
 
 export type Organization = z.infer<typeof organizationSchema>
+
+const storageKey = 'foosrank-organizations'
+
+async function listOrganizations(): Promise<Organization[]> {
+  try {
+    const organizations = JSON.parse(
+      window.localStorage.getItem(storageKey) ?? '[]',
+    )
+    return Array.isArray(organizations) ? organizations : []
+  } catch {
+    return []
+  }
+}
+
+async function createOrganization(organization: Organization) {
+  const storedOrganizations = JSON.parse(
+    window.localStorage.getItem(storageKey) ?? '[]',
+  )
+  const organizations = Array.isArray(storedOrganizations)
+    ? storedOrganizations
+    : []
+  window.localStorage.setItem(
+    storageKey,
+    JSON.stringify([...organizations, organization]),
+  )
+  return organization
+}
+
+export async function resetOrganization() {
+  window.localStorage.removeItem(storageKey)
+}
 
 export const organizationsCollection = createCollection(
   queryCollectionOptions({

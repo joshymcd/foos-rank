@@ -1,12 +1,22 @@
-import { HeadContent, Scripts, createRootRoute } from '@tanstack/react-router'
+import {
+  HeadContent,
+  Scripts,
+  createRootRoute,
+  retainSearchParams,
+} from '@tanstack/react-router'
 import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools'
 import { ReactQueryDevtoolsPanel } from '@tanstack/react-query-devtools'
 import { TanStackDevtools } from '@tanstack/react-devtools'
+import { z } from 'zod'
 
 import appCss from '../styles.css?url'
 
 export const Route = createRootRoute({
   ssr: false,
+  validateSearch: z.object({ organizationId: z.string().optional() }),
+  search: {
+    middlewares: [retainSearchParams(['organizationId'])],
+  },
   head: () => ({
     meta: [
       {

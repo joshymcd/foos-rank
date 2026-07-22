@@ -10,9 +10,9 @@ import { leaderboard } from '../domain/elo'
 
 export const Route = createFileRoute('/people')({ component: People })
 function People() {
-  const organization = (
-    useLiveQuery(() => organizationsCollection).data ?? []
-  ).at(0)
+  const { organizationId } = Route.useSearch()
+  const organizations = useLiveQuery(() => organizationsCollection).data ?? []
+  const organization = organizations.find((item) => item.id === organizationId)
   const people = useLiveQuery(() => peopleCollection).data ?? []
   const matches = useLiveQuery(() => matchesCollection).data ?? []
   const add = useMutation({
