@@ -32,6 +32,7 @@ function People() {
         organizationId: personOrganizationId,
         name: name.trim(),
         normalizedName: name.trim().toLowerCase(),
+        elo: 1000,
         createdAt: new Date().toISOString(),
       })
       await person.isPersisted.promise
@@ -99,9 +100,7 @@ function People() {
                   {person.played} played · {person.wins}W {person.losses}L
                 </p>
               </div>
-              <strong className="tabular-nums">
-                {Math.round(person.rating)}
-              </strong>
+              <strong className="tabular-nums">{Math.round(person.elo)}</strong>
             </div>
           ))}
         </div>

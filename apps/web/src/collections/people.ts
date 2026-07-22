@@ -1,13 +1,15 @@
 import { createCollection } from '@tanstack/db'
 import { queryCollectionOptions } from '@tanstack/query-db-collection'
 import { z } from 'zod'
-import { queryClient } from '../query-client'
+import { queryClient } from './index'
+import type { Match } from './matches'
 
 export const personSchema = z.object({
   id: z.string(),
   organizationId: z.string(),
   name: z.string(),
   normalizedName: z.string(),
+  elo: z.number(),
   createdAt: z.string(),
 })
 
@@ -18,7 +20,9 @@ const storageKey = 'foosrank-people'
 async function listPeople(): Promise<Person[]> {
   try {
     const people = JSON.parse(window.localStorage.getItem(storageKey) ?? '[]')
-    return Array.isArray(people) ? people : []
+    return Array.isArray(people)
+      ? people.map((person) => ({ ...person, elo: person.elo ?? 1000 }))
+      : []
   } catch {
     return []
   }
@@ -44,6 +48,14 @@ async function createPerson(person: Person) {
 
 export async function resetPeople() {
   window.localStorage.removeItem(storageKey)
+}
+
+export function calculateEloChanges(match: Match) {
+  console.log('TODO: calculate and save player Elo for completed match', match)
+  return match.participants.map((participant) => ({
+    personId: participant.personId,
+    change: 0,
+  }))
 }
 
 export const peopleCollection = createCollection(

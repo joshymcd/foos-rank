@@ -2,7 +2,6 @@ import type { Match, TeamColor } from '../collections/matches'
 import type { Person } from '../collections/people'
 
 export interface RankedPerson extends Person {
-  rating: number
   rank: number
   played: number
   wins: number
@@ -10,65 +9,10 @@ export interface RankedPerson extends Person {
   streak: number
 }
 
-export interface MatchRatingChange {
-  personId: string
-  before: number
-  after: number
-  delta: number
-}
-
-const INITIAL_RATING = 1000
-const K_FACTOR = 32
-
-export function replayRatings(people: Person[], matches: Match[]) {
-  const ratings = new Map(people.map((person) => [person.id, INITIAL_RATING]))
-  const changes = new Map<string, MatchRatingChange[]>()
-
-  for (const match of [...matches].sort(
-    (a, b) => (a.sequence ?? 0) - (b.sequence ?? 0),
-  )) {
-    if (!match.complete || !match.score) continue
-    const teamMembers = (team: TeamColor) =>
-      match.participants.filter((participant) => participant.team === team)
-    const red = teamMembers('red')
-    const blue = teamMembers('blue')
-    const average = (members: typeof red) =>
-      members.reduce(
-        (sum, member) => sum + (ratings.get(member.personId) ?? INITIAL_RATING),
-        0,
-      ) / members.length
-    const redRating = average(red)
-    const blueRating = average(blue)
-    const expectedRed = 1 / (1 + 10 ** ((blueRating - redRating) / 400))
-    const redWon = match.score.red > match.score.blue
-    const redPool = K_FACTOR * ((redWon ? 1 : 0) - expectedRed)
-
-    for (const [, members, pool] of [
-      ['red', red, redPool],
-      ['blue', blue, -redPool],
-    ] as const) {
-      for (const member of members) {
-        const before = ratings.get(member.personId) ?? INITIAL_RATING
-        const after = before + pool / members.length
-        ratings.set(member.personId, after)
-        const record: MatchRatingChange = {
-          personId: member.personId,
-          before,
-          after,
-          delta: after - before,
-        }
-        changes.set(match.id, [...(changes.get(match.id) ?? []), record])
-      }
-    }
-  }
-  return { ratings, changes }
-}
-
 export function leaderboard(
   people: Person[],
   matches: Match[],
 ): RankedPerson[] {
-  const { ratings } = replayRatings(people, matches)
   const stats = new Map(
     people.map((person) => [
       person.id,
@@ -106,13 +50,12 @@ export function leaderboard(
       }
       return {
         ...person,
-        rating: ratings.get(person.id) ?? INITIAL_RATING,
         ...personStats,
       }
     })
     .sort(
       (a, b) =>
-        b.rating - a.rating || b.wins - a.wins || a.name.localeCompare(b.name),
+        b.elo - a.elo || b.wins - a.wins || a.name.localeCompare(b.name),
     )
     .map((person, index) => ({ ...person, rank: index + 1 }))
 }

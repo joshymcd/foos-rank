@@ -16,7 +16,7 @@ import type {
   MatchParticipant,
   TeamColor,
 } from '../../collections/matches'
-import { peopleCollection } from '../../collections/people'
+import { calculateEloChanges, peopleCollection } from '../../collections/people'
 
 export const Route = createFileRoute('/matches/new')({
   component: NewMatch,
@@ -61,7 +61,7 @@ function NewMatch() {
         sequence: null,
         completedAt: null,
         score: null,
-        ratingAlgorithm: null,
+        eloChanges: null,
       })
       await match.isPersisted.promise
     },
@@ -72,17 +72,27 @@ function NewMatch() {
         (match) => match.organizationId === organizationId && !match.complete,
       )
       if (!current) throw new Error('There is no active match.')
+      const sequence =
+        Array.from(matchesCollection.values()).filter(
+          (storedMatch) =>
+            storedMatch.organizationId === organizationId &&
+            storedMatch.complete,
+        ).length + 1
+      const completedAt = new Date().toISOString()
+      const eloChanges = calculateEloChanges({
+        ...current,
+        complete: true,
+        sequence,
+        completedAt,
+        score,
+        eloChanges: null,
+      })
       const match = matchesCollection.update(current.id, (draft) => {
         draft.complete = true
-        draft.sequence =
-          Array.from(matchesCollection.values()).filter(
-            (storedMatch) =>
-              storedMatch.organizationId === organizationId &&
-              storedMatch.complete,
-          ).length + 1
-        draft.completedAt = new Date().toISOString()
+        draft.sequence = sequence
+        draft.completedAt = completedAt
         draft.score = score
-        draft.ratingAlgorithm = 'elo-team-average-v1'
+        draft.eloChanges = eloChanges
       })
       await match.isPersisted.promise
     },

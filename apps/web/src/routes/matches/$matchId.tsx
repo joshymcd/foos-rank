@@ -5,7 +5,6 @@ import { MatchTeams } from '../../components/match-teams'
 import { organizationsCollection } from '../../collections/organization'
 import { matchesCollection } from '../../collections/matches'
 import { peopleCollection } from '../../collections/people'
-import { replayRatings } from '../../domain/elo'
 
 export const Route = createFileRoute('/matches/$matchId')({
   component: MatchDetail,
@@ -39,7 +38,6 @@ function MatchDetail() {
         </p>
       </AppShell>
     )
-  const changes = replayRatings(people, matches).changes.get(match.id) ?? []
   return (
     <AppShell title="Match result">
       <section className="rounded-lg border border-slate-200 bg-white p-5">
@@ -50,12 +48,9 @@ function MatchDetail() {
           </time>
         </div>
         <MatchTeams match={match} people={people} />
-        <h2 className="mt-7 font-semibold">Players and rating changes</h2>
+        <h2 className="mt-7 font-semibold">Player Elo</h2>
         <div className="mt-3 divide-y divide-slate-100">
           {match.participants.map((participant) => {
-            const change = changes.find(
-              (item) => item.personId === participant.personId,
-            )
             const person = people.find(
               (item) => item.id === participant.personId,
             )
@@ -68,16 +63,8 @@ function MatchDetail() {
                   <strong>{person?.name ?? 'Unknown'}</strong> ·{' '}
                   {participant.team} · {participant.role}
                 </span>
-                <span
-                  className={
-                    change && change.delta >= 0
-                      ? 'font-semibold text-emerald-700'
-                      : 'font-semibold text-red-700'
-                  }
-                >
-                  {change
-                    ? `${change.delta >= 0 ? '+' : ''}${change.delta.toFixed(1)}`
-                    : '—'}
+                <span className="font-semibold tabular-nums">
+                  {Math.round(person?.elo ?? 1000)}
                 </span>
               </div>
             )

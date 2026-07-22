@@ -57,7 +57,7 @@ function Overview() {
                   {person.name}
                 </span>
                 <span className="font-semibold tabular-nums">
-                  {Math.round(person.rating)}
+                  {Math.round(person.elo)}
                 </span>
               </div>
             ))}

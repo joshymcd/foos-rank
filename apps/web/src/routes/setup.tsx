@@ -31,6 +31,7 @@ function Setup() {
         organizationId,
         name: personName.trim(),
         normalizedName: personName.trim().toLowerCase(),
+        elo: 1000,
         createdAt: new Date().toISOString(),
       })
       await person.isPersisted.promise

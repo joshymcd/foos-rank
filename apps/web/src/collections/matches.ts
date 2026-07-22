@@ -1,7 +1,7 @@
 import { createCollection } from '@tanstack/db'
 import { queryCollectionOptions } from '@tanstack/query-db-collection'
 import { z } from 'zod'
-import { queryClient } from '../query-client'
+import { queryClient } from './index'
 
 export const teamColorSchema = z.enum(['red', 'blue'])
 export const playerRoleSchema = z.enum(['attack', 'defence', 'both'])
@@ -10,6 +10,10 @@ export const participantSchema = z.object({
   personId: z.string(),
   team: teamColorSchema,
   role: playerRoleSchema,
+})
+export const eloChangeSchema = z.object({
+  personId: z.string(),
+  change: z.number(),
 })
 export const matchSchema = z.object({
   id: z.string(),
@@ -21,13 +25,14 @@ export const matchSchema = z.object({
   sequence: z.number().nullable(),
   completedAt: z.string().nullable(),
   score: z.object({ red: z.number(), blue: z.number() }).nullable(),
-  ratingAlgorithm: z.literal('elo-team-average-v1').nullable(),
+  eloChanges: z.array(eloChangeSchema).nullable(),
 })
 
 export type TeamColor = z.infer<typeof teamColorSchema>
 export type PlayerRole = z.infer<typeof playerRoleSchema>
 export type MatchFormat = z.infer<typeof matchFormatSchema>
 export type MatchParticipant = z.infer<typeof participantSchema>
+export type EloChange = z.infer<typeof eloChangeSchema>
 export type Match = z.infer<typeof matchSchema>
 
 const storageKey = 'foosrank-matches'
@@ -35,7 +40,12 @@ const storageKey = 'foosrank-matches'
 async function listMatches(): Promise<Match[]> {
   try {
     const matches = JSON.parse(window.localStorage.getItem(storageKey) ?? '[]')
-    return Array.isArray(matches) ? matches : []
+    return Array.isArray(matches)
+      ? matches.map((match) => ({
+          ...match,
+          eloChanges: match.eloChanges ?? null,
+        }))
+      : []
   } catch {
     return []
   }

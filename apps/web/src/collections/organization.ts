@@ -1,7 +1,7 @@
 import { createCollection } from '@tanstack/db'
 import { queryCollectionOptions } from '@tanstack/query-db-collection'
 import { z } from 'zod'
-import { queryClient } from '../query-client'
+import { queryClient } from './index'
 
 export const organizationSchema = z.object({
   id: z.string(),

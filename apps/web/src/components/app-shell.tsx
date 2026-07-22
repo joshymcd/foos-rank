@@ -4,7 +4,7 @@ import type { ReactNode } from 'react'
 import { resetMatches } from '../collections/matches'
 import { resetOrganization } from '../collections/organization'
 import { resetPeople } from '../collections/people'
-import { queryClient } from '../query-client'
+import { queryClient } from '../collections'
 
 const navigation = [
   ['Overview', '/overview'],

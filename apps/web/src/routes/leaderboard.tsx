@@ -48,7 +48,7 @@ function Leaderboard() {
                   </td>
                   <td className="px-5 py-4 font-medium">{person.name}</td>
                   <td className="px-5 py-4 text-right font-bold tabular-nums">
-                    {Math.round(person.rating)}
+                    {Math.round(person.elo)}
                   </td>
                   <td className="px-5 py-4 text-right tabular-nums">
                     {person.played}
