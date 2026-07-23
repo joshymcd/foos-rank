@@ -97,7 +97,11 @@ function NewMatch() {
   const setRole = (index: number, role: MatchParticipant['role']) =>
     setParticipants((current) =>
       current.map((participant, itemIndex) =>
-        itemIndex === index ? { ...participant, role } : participant,
+        role === 'both' && participant.team === current[index].team
+          ? { ...participant, role }
+          : itemIndex === index
+            ? { ...participant, role }
+            : participant,
       ),
     )
 
@@ -238,7 +242,8 @@ function TeamBuilder({
                   onChange={(event) => {
                     if (
                       event.target.value === 'attack' ||
-                      event.target.value === 'defence'
+                      event.target.value === 'defence' ||
+                      event.target.value === 'both'
                     )
                       setRole(index, event.target.value)
                   }}
@@ -246,6 +251,7 @@ function TeamBuilder({
                 >
                   <option value="attack">Attack</option>
                   <option value="defence">Defence</option>
+                  <option value="both">Both</option>
                 </select>
               </label>
             ) : (

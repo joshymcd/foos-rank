@@ -125,8 +125,11 @@ export function validateMatch(
       return 'Solo players must play both.'
     if (teamPlayers.length === 2) {
       const roles = new Set(teamPlayers.map((participant) => participant.role))
-      if (!roles.has('attack') || !roles.has('defence'))
-        return 'Doubles teams need one attack and one defence player.'
+      if (
+        !(roles.size === 1 && roles.has('both')) &&
+        !(roles.has('attack') && roles.has('defence'))
+      )
+        return 'Doubles teams need one attack and one defence player, or both players set to both.'
     }
   }
   if (score) {
