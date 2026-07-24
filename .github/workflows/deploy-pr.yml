@@ -6,26 +6,58 @@ on:
 
 permissions:
   contents: read
-  id-token: write
 
 concurrency:
   group: sst-pr-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 
 jobs:
+  test:
+    if: github.event.action != 'closed'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.16.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Validate web application
+        run: |
+          pnpm --filter @foos-rank/web check
+          pnpm --filter @foos-rank/web lint
+          pnpm --filter @foos-rank/web typecheck
+          pnpm --filter @foos-rank/web build
+
   deploy:
     if: >-
       github.event.action != 'closed' &&
       github.event.pull_request.head.repo.full_name == github.repository
+    needs: test
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    permissions:
+      contents: read
+      deployments: write
+      id-token: write
+    environment:
+      name: preview
     env:
       AWS_REGION: ${{ vars.AWS_REGION }}
       AWS_ROLE_TO_ASSUME: ${{ vars.AWS_ROLE_TO_ASSUME }}
       SST_STAGE: pr-${{ github.event.pull_request.number }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - uses: pnpm/action-setup@v4
         with:
@@ -41,16 +73,6 @@ jobs:
         run: |
           test -n "$AWS_REGION"
           test -n "$AWS_ROLE_TO_ASSUME"
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Validate web application
-        run: |
-          pnpm --filter @foos-rank/web check
-          pnpm --filter @foos-rank/web lint
-          pnpm --filter @foos-rank/web typecheck
-          pnpm --filter @foos-rank/web build
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -69,13 +91,16 @@ jobs:
       github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    permissions:
+      contents: read
+      id-token: write
     env:
       AWS_REGION: ${{ vars.AWS_REGION }}
       AWS_ROLE_TO_ASSUME: ${{ vars.AWS_ROLE_TO_ASSUME }}
       SST_STAGE: pr-${{ github.event.pull_request.number }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - uses: pnpm/action-setup@v4
         with:
