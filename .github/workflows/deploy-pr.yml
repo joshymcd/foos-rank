@@ -47,6 +47,8 @@ jobs:
       contents: read
       deployments: write
       id-token: write
+    environment:
+      name: preview
     env:
       AWS_REGION: ${{ vars.AWS_REGION }}
       AWS_ROLE_TO_ASSUME: ${{ vars.AWS_ROLE_TO_ASSUME }}
