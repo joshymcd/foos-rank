@@ -13,10 +13,11 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as OrganizationIdRouteRouteImport } from './routes/$organizationId/route'
 import { Route as OrganizationIdIndexRouteImport } from './routes/$organizationId/index'
 import { Route as OrganizationIdLeaderboardRouteImport } from './routes/$organizationId/leaderboard'
-import { Route as OrganizationIdPeopleRouteImport } from './routes/$organizationId/people'
 import { Route as OrganizationIdMatchesIndexRouteImport } from './routes/$organizationId/matches/index'
 import { Route as OrganizationIdMatchesMatchIdRouteImport } from './routes/$organizationId/matches/$matchId'
 import { Route as OrganizationIdMatchesNewRouteImport } from './routes/$organizationId/matches/new'
+import { Route as OrganizationIdPeopleIndexRouteImport } from './routes/$organizationId/people/index'
+import { Route as OrganizationIdPeoplePersonIdRouteImport } from './routes/$organizationId/people/$personId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -39,11 +40,6 @@ const OrganizationIdLeaderboardRoute =
     path: '/leaderboard',
     getParentRoute: () => OrganizationIdRouteRoute,
   } as any)
-const OrganizationIdPeopleRoute = OrganizationIdPeopleRouteImport.update({
-  id: '/people',
-  path: '/people',
-  getParentRoute: () => OrganizationIdRouteRoute,
-} as any)
 const OrganizationIdMatchesIndexRoute =
   OrganizationIdMatchesIndexRouteImport.update({
     id: '/matches/',
@@ -62,36 +58,51 @@ const OrganizationIdMatchesNewRoute =
     path: '/matches/new',
     getParentRoute: () => OrganizationIdRouteRoute,
   } as any)
+const OrganizationIdPeopleIndexRoute =
+  OrganizationIdPeopleIndexRouteImport.update({
+    id: '/people/',
+    path: '/people/',
+    getParentRoute: () => OrganizationIdRouteRoute,
+  } as any)
+const OrganizationIdPeoplePersonIdRoute =
+  OrganizationIdPeoplePersonIdRouteImport.update({
+    id: '/people/$personId',
+    path: '/people/$personId',
+    getParentRoute: () => OrganizationIdRouteRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/$organizationId': typeof OrganizationIdRouteRouteWithChildren
   '/$organizationId/leaderboard': typeof OrganizationIdLeaderboardRoute
-  '/$organizationId/people': typeof OrganizationIdPeopleRoute
   '/$organizationId/': typeof OrganizationIdIndexRoute
   '/$organizationId/matches/$matchId': typeof OrganizationIdMatchesMatchIdRoute
   '/$organizationId/matches/new': typeof OrganizationIdMatchesNewRoute
+  '/$organizationId/people/$personId': typeof OrganizationIdPeoplePersonIdRoute
   '/$organizationId/matches/': typeof OrganizationIdMatchesIndexRoute
+  '/$organizationId/people/': typeof OrganizationIdPeopleIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/$organizationId/leaderboard': typeof OrganizationIdLeaderboardRoute
-  '/$organizationId/people': typeof OrganizationIdPeopleRoute
   '/$organizationId': typeof OrganizationIdIndexRoute
   '/$organizationId/matches/$matchId': typeof OrganizationIdMatchesMatchIdRoute
   '/$organizationId/matches/new': typeof OrganizationIdMatchesNewRoute
+  '/$organizationId/people/$personId': typeof OrganizationIdPeoplePersonIdRoute
   '/$organizationId/matches': typeof OrganizationIdMatchesIndexRoute
+  '/$organizationId/people': typeof OrganizationIdPeopleIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/$organizationId': typeof OrganizationIdRouteRouteWithChildren
   '/$organizationId/leaderboard': typeof OrganizationIdLeaderboardRoute
-  '/$organizationId/people': typeof OrganizationIdPeopleRoute
   '/$organizationId/': typeof OrganizationIdIndexRoute
   '/$organizationId/matches/$matchId': typeof OrganizationIdMatchesMatchIdRoute
   '/$organizationId/matches/new': typeof OrganizationIdMatchesNewRoute
+  '/$organizationId/people/$personId': typeof OrganizationIdPeoplePersonIdRoute
   '/$organizationId/matches/': typeof OrganizationIdMatchesIndexRoute
+  '/$organizationId/people/': typeof OrganizationIdPeopleIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -99,30 +110,33 @@ export interface FileRouteTypes {
     | '/'
     | '/$organizationId'
     | '/$organizationId/leaderboard'
-    | '/$organizationId/people'
     | '/$organizationId/'
     | '/$organizationId/matches/$matchId'
     | '/$organizationId/matches/new'
+    | '/$organizationId/people/$personId'
     | '/$organizationId/matches/'
+    | '/$organizationId/people/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/$organizationId/leaderboard'
-    | '/$organizationId/people'
     | '/$organizationId'
     | '/$organizationId/matches/$matchId'
     | '/$organizationId/matches/new'
+    | '/$organizationId/people/$personId'
     | '/$organizationId/matches'
+    | '/$organizationId/people'
   id:
     | '__root__'
     | '/'
     | '/$organizationId'
     | '/$organizationId/leaderboard'
-    | '/$organizationId/people'
     | '/$organizationId/'
     | '/$organizationId/matches/$matchId'
     | '/$organizationId/matches/new'
+    | '/$organizationId/people/$personId'
     | '/$organizationId/matches/'
+    | '/$organizationId/people/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -160,13 +174,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OrganizationIdLeaderboardRouteImport
       parentRoute: typeof OrganizationIdRouteRoute
     }
-    '/$organizationId/people': {
-      id: '/$organizationId/people'
-      path: '/people'
-      fullPath: '/$organizationId/people'
-      preLoaderRoute: typeof OrganizationIdPeopleRouteImport
-      parentRoute: typeof OrganizationIdRouteRoute
-    }
     '/$organizationId/matches/': {
       id: '/$organizationId/matches/'
       path: '/matches'
@@ -188,25 +195,41 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OrganizationIdMatchesNewRouteImport
       parentRoute: typeof OrganizationIdRouteRoute
     }
+    '/$organizationId/people/': {
+      id: '/$organizationId/people/'
+      path: '/people'
+      fullPath: '/$organizationId/people/'
+      preLoaderRoute: typeof OrganizationIdPeopleIndexRouteImport
+      parentRoute: typeof OrganizationIdRouteRoute
+    }
+    '/$organizationId/people/$personId': {
+      id: '/$organizationId/people/$personId'
+      path: '/people/$personId'
+      fullPath: '/$organizationId/people/$personId'
+      preLoaderRoute: typeof OrganizationIdPeoplePersonIdRouteImport
+      parentRoute: typeof OrganizationIdRouteRoute
+    }
   }
 }
 
 interface OrganizationIdRouteRouteChildren {
   OrganizationIdLeaderboardRoute: typeof OrganizationIdLeaderboardRoute
-  OrganizationIdPeopleRoute: typeof OrganizationIdPeopleRoute
   OrganizationIdIndexRoute: typeof OrganizationIdIndexRoute
   OrganizationIdMatchesMatchIdRoute: typeof OrganizationIdMatchesMatchIdRoute
   OrganizationIdMatchesNewRoute: typeof OrganizationIdMatchesNewRoute
+  OrganizationIdPeoplePersonIdRoute: typeof OrganizationIdPeoplePersonIdRoute
   OrganizationIdMatchesIndexRoute: typeof OrganizationIdMatchesIndexRoute
+  OrganizationIdPeopleIndexRoute: typeof OrganizationIdPeopleIndexRoute
 }
 
 const OrganizationIdRouteRouteChildren: OrganizationIdRouteRouteChildren = {
   OrganizationIdLeaderboardRoute: OrganizationIdLeaderboardRoute,
-  OrganizationIdPeopleRoute: OrganizationIdPeopleRoute,
   OrganizationIdIndexRoute: OrganizationIdIndexRoute,
   OrganizationIdMatchesMatchIdRoute: OrganizationIdMatchesMatchIdRoute,
   OrganizationIdMatchesNewRoute: OrganizationIdMatchesNewRoute,
+  OrganizationIdPeoplePersonIdRoute: OrganizationIdPeoplePersonIdRoute,
   OrganizationIdMatchesIndexRoute: OrganizationIdMatchesIndexRoute,
+  OrganizationIdPeopleIndexRoute: OrganizationIdPeopleIndexRoute,
 }
 
 const OrganizationIdRouteRouteWithChildren =

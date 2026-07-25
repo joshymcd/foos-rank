@@ -1,14 +1,24 @@
 import { Link, createFileRoute } from '@tanstack/react-router'
 import { useLiveQuery } from '@tanstack/react-db'
+import { Plus, Swords } from 'lucide-react'
+import { useState } from 'react'
 import { EmptyOrganization } from '../../../components/app-shell'
-import { MatchTeams } from '../../../components/match-teams'
+import { Scoreboard } from '../../../components/scoreboard'
+import { Badge } from '../../../components/ui/badge'
+import { buttonVariants } from '../../../components/ui/button'
+import { EmptyState } from '../../../components/ui/empty-state'
+import { SegmentedControl } from '../../../components/ui/segmented-control'
 import { organizationsCollection } from '../../../collections/organization'
 import { matchesCollection } from '../../../collections/matches'
+import type { Match } from '../../../collections/matches'
 import { peopleCollection } from '../../../collections/people'
 
 export const Route = createFileRoute('/$organizationId/matches/')({
   component: Matches,
 })
+
+type Filter = 'all' | 'active' | 'completed'
+
 function Matches() {
   const { organizationId } = Route.useParams()
   const organizations = useLiveQuery(() => organizationsCollection).data ?? []
@@ -19,66 +29,112 @@ function Matches() {
   const matches = (useLiveQuery(() => matchesCollection).data ?? []).filter(
     (match) => match.organizationId === organizationId,
   )
-  const activeMatches = matches.filter((match) => !match.complete)
-  const completedMatches = matches.filter((match) => match.complete)
+  const [filter, setFilter] = useState<Filter>('all')
   if (!organization) return <EmptyOrganization />
+
+  const activeMatches = matches.filter((match) => !match.complete)
+  const completedMatches = matches
+    .filter((match) => match.complete)
+    .sort((a, b) => (b.sequence ?? 0) - (a.sequence ?? 0))
+  const visible: Array<{ match: Match; active: boolean }> =
+    filter === 'active'
+      ? activeMatches.map((match) => ({ match, active: true }))
+      : filter === 'completed'
+        ? completedMatches.map((match) => ({ match, active: false }))
+        : [
+            ...activeMatches.map((match) => ({ match, active: true })),
+            ...completedMatches.map((match) => ({ match, active: false })),
+          ]
+
   return (
-    <>
-      <div className="mb-6 flex items-center justify-between gap-4">
-        <h1 className="text-2xl font-bold tracking-tight">Matches</h1>
+    <div className="animate-fade-up space-y-5">
+      <header className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="font-display text-2xl font-bold tracking-tight sm:text-3xl">
+            Matches
+          </h1>
+          <p className="mt-1 text-sm text-muted">
+            {completedMatches.length} completed
+            {activeMatches.length > 0 && ` · ${activeMatches.length} live`}
+          </p>
+        </div>
         <Link
           to="/$organizationId/matches/new"
           params={{ organizationId }}
-          className="rounded-md bg-emerald-700 px-4 py-2 text-sm font-semibold text-white"
+          className={buttonVariants({ className: 'hidden md:inline-flex' })}
         >
+          <Plus className="size-4" aria-hidden />
           Start match
         </Link>
-      </div>
-      {activeMatches.length > 0 && (
-        <section className="mb-7 space-y-3">
-          <h2 className="font-semibold">Active matches</h2>
-          {activeMatches.map((match) => (
-            <Link
-              key={match.id}
-              to="/$organizationId/matches/$matchId"
-              params={{ organizationId, matchId: match.id }}
-              className="block rounded-lg border border-amber-200 bg-amber-50 p-4 hover:border-amber-300"
-            >
-              <div className="mb-3 flex justify-between text-xs text-amber-900">
-                <span>{match.format}</span>
-                <span>In progress</span>
-              </div>
-              <MatchTeams match={match} people={people} />
-            </Link>
-          ))}
-        </section>
-      )}
-      <section className="space-y-3">
-        <h2 className="font-semibold">Completed matches</h2>
-        {[...completedMatches].reverse().map((match) => (
+      </header>
+
+      <SegmentedControl
+        label="Filter matches"
+        value={filter}
+        onChange={setFilter}
+        options={[
+          { value: 'all', label: 'All' },
+          { value: 'active', label: 'Active' },
+          { value: 'completed', label: 'Completed' },
+        ]}
+      />
+
+      <div className="space-y-3">
+        {visible.map(({ match, active }, index) => (
           <Link
             key={match.id}
             to="/$organizationId/matches/$matchId"
             params={{ organizationId, matchId: match.id }}
-            className="block rounded-lg border border-slate-200 bg-white p-4 hover:border-slate-300"
+            style={{ animationDelay: `${Math.min(index, 8) * 40}ms` }}
+            className={
+              active
+                ? 'block animate-fade-in rounded-xl border border-live/30 bg-live-soft p-4 transition-all hover:-translate-y-0.5 hover:border-live/50 hover:shadow-md'
+                : 'block animate-fade-in rounded-xl border border-border bg-card p-4 transition-all hover:-translate-y-0.5 hover:border-surface-2 hover:shadow-md'
+            }
           >
-            <div className="mb-3 flex justify-between text-xs text-slate-500">
-              <span>{match.format}</span>
-              <time>
+            <div className="mb-3 flex items-center justify-between text-xs">
+              <div className="flex items-center gap-2">
+                <Badge tone="neutral">{match.format}</Badge>
+                {active && (
+                  <Badge tone="live">
+                    <span className="size-1.5 animate-pulse-dot rounded-full bg-live" />
+                    Live
+                  </Badge>
+                )}
+              </div>
+              <time className="text-muted">
                 {new Date(
                   match.completedAt ?? match.startedAt,
                 ).toLocaleDateString()}
               </time>
             </div>
-            <MatchTeams match={match} people={people} />
+            <Scoreboard match={match} people={people} />
           </Link>
         ))}
-        {completedMatches.length === 0 && (
-          <div className="rounded-lg border border-dashed border-slate-300 bg-white p-8 text-center text-slate-500">
-            No completed matches have been recorded.
-          </div>
+        {visible.length === 0 && (
+          <EmptyState
+            icon={<Swords className="size-8" aria-hidden />}
+            title={
+              filter === 'active' ? 'No active matches' : 'No matches yet'
+            }
+            description={
+              filter === 'active'
+                ? 'Start a new match to see it here.'
+                : 'Record your first match to build the history.'
+            }
+            action={
+              <Link
+                to="/$organizationId/matches/new"
+                params={{ organizationId }}
+                className={buttonVariants()}
+              >
+                <Plus className="size-4" aria-hidden />
+                Start match
+              </Link>
+            }
+          />
         )}
-      </section>
-    </>
+      </div>
+    </div>
   )
 }

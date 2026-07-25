@@ -1,7 +1,146 @@
 @import 'tailwindcss';
 
-* {
-  box-sizing: border-box;
+:root {
+  color-scheme: light;
+
+  /* Catppuccin Latte */
+  --bg: #eff1f5;
+  --card: #ffffff;
+  --border: #dce0e8;
+  --surface: #e6e9ef;
+  --surface-2: #ccd0da;
+  --text: #4c4f69;
+  --muted: #6c6f85;
+  --faint: #9ca0b0;
+  --brand: #8839ef;
+  --on-brand: #ffffff;
+  --accent: #7287fd;
+  --focus: #7287fd;
+  --team-red: #d20f39;
+  --team-blue: #1e66f5;
+  --success: #40a02b;
+  --warning: #df8e1d;
+  --live: #fe640b;
+  --danger: #d20f39;
+  --gold: #df8e1d;
+  --silver: #9ca0b0;
+  --bronze: #fe640b;
+}
+
+[data-theme='dark'] {
+  color-scheme: dark;
+
+  /* Catppuccin Mocha */
+  --bg: #1e1e2e;
+  --card: #181825;
+  --border: #313244;
+  --surface: #313244;
+  --surface-2: #45475a;
+  --text: #cdd6f4;
+  --muted: #a6adc8;
+  --faint: #6c7086;
+  --brand: #cba6f7;
+  --on-brand: #11111b;
+  --accent: #b4befe;
+  --focus: #b4befe;
+  --team-red: #f38ba8;
+  --team-blue: #89b4fa;
+  --success: #a6e3a1;
+  --warning: #f9e2af;
+  --live: #fab387;
+  --danger: #f38ba8;
+  --gold: #f9e2af;
+  --silver: #a6adc8;
+  --bronze: #fab387;
+}
+
+:root {
+  /* Derived soft tints — resolve per-element, so they follow the active theme */
+  --brand-soft: color-mix(in srgb, var(--brand) 10%, var(--card));
+  --team-red-soft: color-mix(in srgb, var(--team-red) 9%, var(--card));
+  --team-blue-soft: color-mix(in srgb, var(--team-blue) 9%, var(--card));
+  --live-soft: color-mix(in srgb, var(--live) 12%, var(--card));
+  --success-soft: color-mix(in srgb, var(--success) 14%, var(--card));
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-card: var(--card);
+  --color-border: var(--border);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-text: var(--text);
+  --color-muted: var(--muted);
+  --color-faint: var(--faint);
+  --color-brand: var(--brand);
+  --color-on-brand: var(--on-brand);
+  --color-brand-soft: var(--brand-soft);
+  --color-accent: var(--accent);
+  --color-focus: var(--focus);
+  --color-team-red: var(--team-red);
+  --color-team-blue: var(--team-blue);
+  --color-team-red-soft: var(--team-red-soft);
+  --color-team-blue-soft: var(--team-blue-soft);
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-warning: var(--warning);
+  --color-live: var(--live);
+  --color-live-soft: var(--live-soft);
+  --color-danger: var(--danger);
+  --color-gold: var(--gold);
+  --color-silver: var(--silver);
+  --color-bronze: var(--bronze);
+
+  --font-display: 'Space Grotesk', ui-sans-serif, system-ui, sans-serif;
+  --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+
+  --animate-fade-up: fade-up 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+  --animate-fade-in: fade-in 0.3s ease-out both;
+  --animate-scale-in: scale-in 0.25s cubic-bezier(0.22, 1, 0.36, 1) both;
+  --animate-pulse-dot: pulse-dot 2s ease-in-out infinite;
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes pulse-dot {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.45;
+    transform: scale(0.75);
+  }
 }
 
 html,
@@ -11,11 +150,33 @@ body {
 
 body {
   margin: 0;
-  background: #f1f5f9;
-  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+::selection {
+  background: color-mix(in srgb, var(--brand) 28%, transparent);
 }
 
 :focus-visible {
-  outline: 3px solid #059669;
+  outline: 2px solid var(--focus);
   outline-offset: 2px;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--surface-2) transparent;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

@@ -6,8 +6,13 @@ import {
 } from '@tanstack/react-router'
 import { useLiveQuery } from '@tanstack/react-db'
 import { useMutation } from '@tanstack/react-query'
+import { Play, User, Users } from 'lucide-react'
 import { useState } from 'react'
 import { EmptyOrganization } from '../../../components/app-shell'
+import { Button } from '../../../components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
+import { SegmentedControl } from '../../../components/ui/segmented-control'
+import { Select } from '../../../components/ui/select'
 import { organizationsCollection } from '../../../collections/organization'
 import {
   defaultRoles,
@@ -19,9 +24,11 @@ import {
 import type {
   MatchFormat,
   MatchParticipant,
+  PlayerRole,
   TeamColor,
 } from '../../../collections/matches'
 import { peopleCollection } from '../../../collections/people'
+import { cn } from '../../../lib/cn'
 
 export const Route = createFileRoute('/$organizationId/matches/new')({
   component: NewMatch,
@@ -33,6 +40,12 @@ function createParticipants(format: MatchFormat): MatchParticipant[] {
     defaultRoles(format, team).map((role) => ({ personId: '', team, role })),
   )
 }
+
+const roleOptions: Array<{ value: PlayerRole; label: string }> = [
+  { value: 'attack', label: 'Attack' },
+  { value: 'defence', label: 'Defence' },
+  { value: 'both', label: 'Both' },
+]
 
 function NewMatch() {
   const navigate = useNavigate()
@@ -106,88 +119,143 @@ function NewMatch() {
     )
 
   return (
-    <>
-      <h1 className="mb-6 text-2xl font-bold tracking-tight">Start match</h1>
-      <section className="max-w-3xl rounded-lg border border-slate-200 bg-white p-5">
-        <fieldset>
-          <legend className="font-semibold">Match format</legend>
-          <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
-            {formats.map((item) => (
-              <label
-                key={item.value}
-                className={`cursor-pointer rounded border p-3 text-center text-sm ${format === item.value ? 'border-emerald-700 bg-emerald-50 font-semibold' : 'border-slate-200'}`}
-              >
-                <input
-                  className="sr-only"
-                  type="radio"
-                  name="format"
-                  checked={format === item.value}
-                  onChange={() => {
+    <div className="animate-fade-up space-y-5">
+      <header>
+        <h1 className="font-display text-2xl font-bold tracking-tight sm:text-3xl">
+          Start match
+        </h1>
+        <p className="mt-1 text-sm text-muted">
+          Pick a format and assign players to each team.
+        </p>
+      </header>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Match format</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div
+            role="radiogroup"
+            aria-label="Match format"
+            className="grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3"
+          >
+            {formats.map((item) => {
+              const selected = format === item.value
+              return (
+                <button
+                  key={item.value}
+                  type="button"
+                  role="radio"
+                  aria-checked={selected}
+                  onClick={() => {
                     setFormat(item.value)
                     setParticipants(createParticipants(item.value))
                   }}
-                />
-                {item.label}
-              </label>
-            ))}
+                  className={cn(
+                    'flex flex-col items-center gap-2 rounded-xl border p-4 transition-all active:scale-[0.98]',
+                    selected
+                      ? 'border-brand bg-brand-soft shadow-sm'
+                      : 'border-border bg-card hover:border-surface-2 hover:bg-surface',
+                  )}
+                >
+                  <span
+                    className={cn(
+                      'flex items-center gap-1',
+                      selected ? 'text-brand' : 'text-faint',
+                    )}
+                  >
+                    {item.red === 2 ? (
+                      <Users className="size-4" aria-hidden />
+                    ) : (
+                      <User className="size-4" aria-hidden />
+                    )}
+                    <span className="text-xs font-bold">vs</span>
+                    {item.blue === 2 ? (
+                      <Users className="size-4" aria-hidden />
+                    ) : (
+                      <User className="size-4" aria-hidden />
+                    )}
+                  </span>
+                  <span
+                    className={cn(
+                      'font-display text-lg font-bold',
+                      selected ? 'text-brand' : 'text-text',
+                    )}
+                  >
+                    {item.value}
+                  </span>
+                </button>
+              )
+            })}
           </div>
-        </fieldset>
-        <div className="mt-7 grid gap-5 md:grid-cols-2">
-          <TeamBuilder
-            team="red"
-            format={format}
-            participants={participants}
-            people={people}
-            setPlayer={setPlayer}
-            setRole={setRole}
-          />
-          <TeamBuilder
-            team="blue"
-            format={format}
-            participants={participants}
-            people={people}
-            setPlayer={setPlayer}
-            setRole={setRole}
-          />
-        </div>
-        {(configurationError || error) && (
-          <p role="alert" className="mt-5 text-sm text-red-700">
-            {configurationError ?? error?.message}
-          </p>
-        )}
-        <button
-          disabled={start.isPending || Boolean(configurationError)}
-          onClick={() =>
-            start.mutate(
-              { format, participants },
-              {
-                onSuccess: (matchId) =>
-                  navigate({
-                    to: '/$organizationId/matches/$matchId',
-                    params: { organizationId, matchId },
-                  }),
-              },
-            )
-          }
-          className="mt-6 rounded-md bg-emerald-700 px-4 py-2 font-semibold text-white disabled:opacity-50"
-        >
-          Start match
-        </button>
-        {people.length < 2 && (
-          <p className="mt-3 text-sm text-slate-500">
-            Add at least two people in{' '}
-            <Link
-              to="/$organizationId/people"
-              params={{ organizationId }}
-              className="underline"
-            >
-              People
-            </Link>{' '}
-            first.
-          </p>
-        )}
-      </section>
-    </>
+        </CardContent>
+      </Card>
+
+      <div className="grid gap-4 md:grid-cols-2">
+        <TeamBuilder
+          team="red"
+          format={format}
+          participants={participants}
+          people={people}
+          setPlayer={setPlayer}
+          setRole={setRole}
+        />
+        <TeamBuilder
+          team="blue"
+          format={format}
+          participants={participants}
+          people={people}
+          setPlayer={setPlayer}
+          setRole={setRole}
+        />
+      </div>
+
+      <Card className="sticky bottom-20 z-10 shadow-lg md:bottom-4">
+        <CardContent className="flex flex-wrap items-center justify-between gap-3 !pt-5">
+          <div className="text-sm">
+            {configurationError || error ? (
+              <p role="alert" className="font-medium text-danger">
+                {configurationError ?? error?.message}
+              </p>
+            ) : (
+              <p className="text-muted">Ready when you are.</p>
+            )}
+            {people.length < 2 && (
+              <p className="text-muted">
+                Add at least two people in{' '}
+                <Link
+                  to="/$organizationId/people"
+                  params={{ organizationId }}
+                  className="font-semibold text-brand hover:underline"
+                >
+                  People
+                </Link>{' '}
+                first.
+              </p>
+            )}
+          </div>
+          <Button
+            size="lg"
+            disabled={start.isPending || Boolean(configurationError)}
+            onClick={() =>
+              start.mutate(
+                { format, participants },
+                {
+                  onSuccess: (matchId) =>
+                    navigate({
+                      to: '/$organizationId/matches/$matchId',
+                      params: { organizationId, matchId },
+                    }),
+                },
+              )
+            }
+          >
+            <Play className="size-4" aria-hidden />
+            Start match
+          </Button>
+        </CardContent>
+      </Card>
+    </div>
   )
 }
 
@@ -209,22 +277,36 @@ function TeamBuilder({
   const indexes = participants
     .map((participant, index) => ({ participant, index }))
     .filter(({ participant }) => participant.team === team)
+  const size = teamSize(format, team)
   return (
-    <fieldset
-      className={`rounded-lg p-4 ${team === 'red' ? 'bg-red-50' : 'bg-blue-50'}`}
+    <Card
+      className={cn(
+        'border-2',
+        team === 'red' ? 'border-team-red/25' : 'border-team-blue/25',
+      )}
     >
-      <legend className="font-semibold capitalize">
-        {team} team ({teamSize(format, team)})
-      </legend>
-      <div className="mt-3 space-y-3">
-        {indexes.map(({ participant, index }) => (
-          <div key={`${team}-${index}`} className="grid gap-2">
-            <label className="text-sm font-medium">
-              Player {indexes.length > 1 ? index + 1 : ''}
-              <select
+      <CardHeader>
+        <CardTitle
+          className={team === 'red' ? 'text-team-red' : 'text-team-blue'}
+        >
+          {team} team · {size} {size === 1 ? 'player' : 'players'}
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {indexes.map(({ participant, index }, slot) => (
+          <div
+            key={`${team}-${index}`}
+            className={cn(
+              'space-y-2.5 rounded-lg p-3',
+              team === 'red' ? 'bg-team-red-soft' : 'bg-team-blue-soft',
+            )}
+          >
+            <label className="block text-sm font-medium">
+              {size > 1 ? `Player ${slot + 1}` : 'Player'}
+              <Select
                 value={participant.personId}
                 onChange={(event) => setPlayer(index, event.target.value)}
-                className="mt-1 w-full rounded-md border border-slate-300 bg-white px-3 py-2"
+                className="mt-1.5"
               >
                 <option value="">Select player</option>
                 {people.map((person) => (
@@ -232,34 +314,24 @@ function TeamBuilder({
                     {person.name}
                   </option>
                 ))}
-              </select>
+              </Select>
             </label>
-            {indexes.length > 1 ? (
-              <label className="text-sm font-medium">
-                Position
-                <select
+            {size > 1 ? (
+              <div>
+                <p className="mb-1.5 text-sm font-medium">Position</p>
+                <SegmentedControl
+                  label={`Position for ${team} player ${slot + 1}`}
+                  options={roleOptions}
                   value={participant.role}
-                  onChange={(event) => {
-                    if (
-                      event.target.value === 'attack' ||
-                      event.target.value === 'defence' ||
-                      event.target.value === 'both'
-                    )
-                      setRole(index, event.target.value)
-                  }}
-                  className="mt-1 w-full rounded-md border border-slate-300 bg-white px-3 py-2"
-                >
-                  <option value="attack">Attack</option>
-                  <option value="defence">Defence</option>
-                  <option value="both">Both</option>
-                </select>
-              </label>
+                  onChange={(role) => setRole(index, role)}
+                />
+              </div>
             ) : (
-              <p className="text-xs text-slate-600">Position: both</p>
+              <p className="text-xs text-muted">Plays both positions</p>
             )}
           </div>
         ))}
-      </div>
-    </fieldset>
+      </CardContent>
+    </Card>
   )
 }

@@ -1,10 +1,46 @@
 import { Link } from '@tanstack/react-router'
 import { useMutation } from '@tanstack/react-query'
+import {
+  LayoutDashboard,
+  Plus,
+  Swords,
+  Trash2,
+  Trophy,
+  Users,
+} from 'lucide-react'
 import type { ReactNode } from 'react'
 import { resetMatches } from '../collections/matches'
 import { resetOrganization } from '../collections/organization'
 import { resetPeople } from '../collections/people'
 import { queryClient } from '../collections'
+import { cn } from '../lib/cn'
+import { EmptyState } from './ui/empty-state'
+import { ThemeToggle } from './ui/theme-toggle'
+
+const navItems: Array<{
+  to: string
+  label: string
+  icon: typeof LayoutDashboard
+  exact?: boolean
+}> = [
+  { to: '/$organizationId', label: 'Overview', icon: LayoutDashboard, exact: true },
+  { to: '/$organizationId/leaderboard', label: 'Leaderboard', icon: Trophy },
+  { to: '/$organizationId/people', label: 'People', icon: Users },
+  { to: '/$organizationId/matches', label: 'Matches', icon: Swords },
+]
+
+function Brand({ className }: { className?: string }) {
+  return (
+    <Link to="/" className={cn('flex items-center gap-2.5', className)}>
+      <span className="flex size-8 items-center justify-center rounded-lg bg-brand text-on-brand">
+        <Trophy className="size-4" aria-hidden />
+      </span>
+      <span className="font-display text-lg font-bold tracking-tight text-text">
+        FoosRank
+      </span>
+    </Link>
+  )
+}
 
 export function AppShell({
   children,
@@ -21,88 +57,139 @@ export function AppShell({
       await queryClient.invalidateQueries({ queryKey: ['foosrank'] })
     },
   })
+  const confirmReset = () => {
+    if (window.confirm('Reset all local FoosRank data?')) reset.mutate()
+  }
+
+  const sidebarLink =
+    'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-muted transition-colors hover:bg-surface hover:text-text'
+  const sidebarLinkActive = 'bg-brand-soft text-brand hover:bg-brand-soft hover:text-brand'
+
   return (
-    <div className="min-h-screen bg-slate-100 text-slate-950">
+    <div className="min-h-screen bg-bg text-text">
       <a className="sr-only focus:not-sr-only" href="#content">
         Skip to content
       </a>
-      <header className="border-b border-slate-200 bg-white">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-4 sm:px-6">
-          <Link
-            to="/"
-            className="text-xl font-bold tracking-tight text-slate-900"
-          >
-            FoosRank
-          </Link>
+
+      {/* Desktop sidebar */}
+      <aside className="fixed inset-y-0 left-0 z-20 hidden w-60 flex-col border-r border-border bg-card md:flex">
+        <div className="px-5 py-5">
+          <Brand />
+        </div>
+        <nav aria-label="Main navigation" className="flex-1 space-y-1 px-3">
+          {navItems.map((item) => (
+            <Link
+              key={item.to}
+              to={item.to}
+              params={{ organizationId }}
+              activeOptions={{ exact: item.exact }}
+              activeProps={{ className: sidebarLinkActive }}
+              className={sidebarLink}
+            >
+              <item.icon className="size-4" aria-hidden />
+              {item.label}
+            </Link>
+          ))}
+        </nav>
+        <div className="space-y-1 border-t border-border p-3">
           <Link
             to="/$organizationId/matches/new"
             params={{ organizationId }}
-            className="rounded-md bg-emerald-700 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-800"
+            className="mb-2 flex h-10 items-center justify-center gap-2 rounded-lg bg-brand text-sm font-semibold text-on-brand shadow-sm transition-all hover:bg-brand/90 active:scale-[0.98]"
           >
+            <Plus className="size-4" aria-hidden />
             Start match
           </Link>
+          <div className="flex items-center justify-between">
+            <ThemeToggle />
+            <button
+              type="button"
+              onClick={confirmReset}
+              className="inline-flex h-8 items-center gap-1.5 rounded-lg px-3 text-xs font-semibold text-faint transition-colors hover:bg-surface hover:text-danger"
+            >
+              <Trash2 className="size-3.5" aria-hidden />
+              Reset demo
+            </button>
+          </div>
         </div>
-        <nav
-          aria-label="Main navigation"
-          className="mx-auto flex max-w-6xl gap-1 overflow-x-auto px-4 sm:px-6"
-        >
-          <Link
-            to="/$organizationId"
-            params={{ organizationId }}
-            activeProps={{ className: 'border-emerald-700 text-emerald-800' }}
-            className="border-b-2 border-transparent px-3 py-3 text-sm font-medium text-slate-600 hover:text-slate-950"
-          >
-            Overview
-          </Link>
-          <Link
-            to="/$organizationId/leaderboard"
-            params={{ organizationId }}
-            activeProps={{ className: 'border-emerald-700 text-emerald-800' }}
-            className="border-b-2 border-transparent px-3 py-3 text-sm font-medium text-slate-600 hover:text-slate-950"
-          >
-            Leaderboard
-          </Link>
-          <Link
-            to="/$organizationId/people"
-            params={{ organizationId }}
-            activeProps={{ className: 'border-emerald-700 text-emerald-800' }}
-            className="border-b-2 border-transparent px-3 py-3 text-sm font-medium text-slate-600 hover:text-slate-950"
-          >
-            People
-          </Link>
-          <Link
-            to="/$organizationId/matches"
-            params={{ organizationId }}
-            activeProps={{ className: 'border-emerald-700 text-emerald-800' }}
-            className="border-b-2 border-transparent px-3 py-3 text-sm font-medium text-slate-600 hover:text-slate-950"
-          >
-            Matches
-          </Link>
-        </nav>
+      </aside>
+
+      {/* Mobile top bar */}
+      <header className="sticky top-0 z-20 flex items-center justify-between border-b border-border bg-card/80 px-4 py-3 backdrop-blur md:hidden">
+        <Brand />
+        <ThemeToggle />
       </header>
-      <main id="content" className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
-        <div className="mb-6 flex justify-end">
-          <button
-            type="button"
-            onClick={() => {
-              if (window.confirm('Reset all local FoosRank data?'))
-                reset.mutate(undefined)
-            }}
-            className="text-sm text-slate-500 underline hover:text-slate-950"
+
+      <div className="md:pl-60">
+        <main
+          id="content"
+          className="mx-auto w-full max-w-5xl px-4 pb-28 pt-6 sm:px-6 md:px-10 md:pb-12 md:pt-10"
+        >
+          {children}
+        </main>
+      </div>
+
+      {/* Mobile bottom tab bar */}
+      <nav
+        aria-label="Main navigation"
+        className="fixed inset-x-0 bottom-0 z-20 grid grid-cols-5 border-t border-border bg-card/90 px-2 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden"
+      >
+        {navItems.slice(0, 2).map((item) => (
+          <MobileTab key={item.to} item={item} organizationId={organizationId} />
+        ))}
+        <div className="flex items-start justify-center">
+          <Link
+            to="/$organizationId/matches/new"
+            params={{ organizationId }}
+            aria-label="Start match"
+            className="-mt-4 flex size-12 items-center justify-center rounded-full bg-brand text-on-brand shadow-lg shadow-brand/30 transition-transform active:scale-95"
           >
-            Reset demo
-          </button>
+            <Plus className="size-6" aria-hidden />
+          </Link>
         </div>
-        {children}
-      </main>
+        {navItems.slice(2).map((item) => (
+          <MobileTab key={item.to} item={item} organizationId={organizationId} />
+        ))}
+      </nav>
     </div>
+  )
+}
+
+function MobileTab({
+  item,
+  organizationId,
+}: {
+  item: (typeof navItems)[number]
+  organizationId: string
+}) {
+  return (
+    <Link
+      to={item.to}
+      params={{ organizationId }}
+      activeOptions={{ exact: item.exact }}
+      activeProps={{ className: 'text-brand' }}
+      className="flex flex-col items-center gap-1 py-2.5 text-[10px] font-semibold text-faint transition-colors"
+    >
+      <item.icon className="size-5" aria-hidden />
+      {item.label}
+    </Link>
   )
 }
 
 export function EmptyOrganization() {
   return (
-    <div className="rounded-lg border border-slate-200 bg-white p-6 text-slate-600">
-      Create or load an organization before using this page.
-    </div>
+    <EmptyState
+      icon={<Users className="size-8" aria-hidden />}
+      title="No organization loaded"
+      description="Create or load an organization before using this page."
+      action={
+        <Link
+          to="/"
+          className="inline-flex h-10 items-center justify-center rounded-lg bg-brand px-4 text-sm font-semibold text-on-brand transition-all hover:bg-brand/90 active:scale-[0.98]"
+        >
+          Go home
+        </Link>
+      }
+    />
   )
 }

@@ -2,7 +2,6 @@ import { createCollection } from '@tanstack/db'
 import { queryCollectionOptions } from '@tanstack/query-db-collection'
 import { z } from 'zod'
 import { queryClient } from './index'
-import type { Match } from './matches'
 
 export const personSchema = z.object({
   id: z.string(),
@@ -28,6 +27,10 @@ async function listPeople(): Promise<Person[]> {
   }
 }
 
+async function savePeople(people: Person[]) {
+  window.localStorage.setItem(storageKey, JSON.stringify(people))
+}
+
 async function createPerson(person: Person) {
   const storedPeople = JSON.parse(
     window.localStorage.getItem(storageKey) ?? '[]',
@@ -42,23 +45,39 @@ async function createPerson(person: Person) {
   ) {
     throw new Error('That person is already in this organization.')
   }
-  window.localStorage.setItem(storageKey, JSON.stringify([...people, person]))
+  await savePeople([...people, person])
   return person
+}
+
+async function updatePerson(person: Person) {
+  // localStorage is synchronous: keep read→write atomic (no awaits in
+  // between) so batched updates from one transaction all persist.
+  const storedPeople = JSON.parse(
+    window.localStorage.getItem(storageKey) ?? '[]',
+  )
+  const people = Array.isArray(storedPeople) ? storedPeople : []
+  window.localStorage.setItem(
+    storageKey,
+    JSON.stringify(
+      people.map((item) => (item.id === person.id ? person : item)),
+    ),
+  )
+  return person
+}
+
+async function deletePerson(id: string) {
+  const storedPeople = JSON.parse(
+    window.localStorage.getItem(storageKey) ?? '[]',
+  )
+  const people = Array.isArray(storedPeople) ? storedPeople : []
+  window.localStorage.setItem(
+    storageKey,
+    JSON.stringify(people.filter((person: Person) => person.id !== id)),
+  )
 }
 
 export async function resetPeople() {
   window.localStorage.removeItem(storageKey)
-}
-
-export function calculateEloChanges(match: Match, people: Person[]) {
-  console.log('TODO: calculate and save player Elo for completed match', {
-    match,
-    people,
-  })
-  return match.participants.map((participant) => ({
-    personId: participant.personId,
-    change: 0,
-  }))
 }
 
 export const peopleCollection = createCollection(
@@ -72,6 +91,18 @@ export const peopleCollection = createCollection(
       Promise.all(
         transaction.mutations.map((mutation) =>
           createPerson(mutation.modified),
+        ),
+      ),
+    onUpdate: async ({ transaction }) =>
+      Promise.all(
+        transaction.mutations.map((mutation) =>
+          updatePerson(mutation.modified),
+        ),
+      ),
+    onDelete: async ({ transaction }) =>
+      Promise.all(
+        transaction.mutations.map((mutation) =>
+          deletePerson(mutation.modified.id),
         ),
       ),
   }),
