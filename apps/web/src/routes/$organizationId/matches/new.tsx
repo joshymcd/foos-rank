@@ -1,26 +1,18 @@
-import {
-  Link,
-  Navigate,
-  createFileRoute,
-  useNavigate,
-} from '@tanstack/react-router'
+import { Link, createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useLiveQuery } from '@tanstack/react-db'
 import { useMutation } from '@tanstack/react-query'
-import { Play, User, Users } from 'lucide-react'
+import { Play } from 'lucide-react'
 import { useState } from 'react'
-import { EmptyOrganization } from '../../../components/app-shell'
 import { Button } from '../../../components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from '../../../components/ui/card'
 import { SegmentedControl } from '../../../components/ui/segmented-control'
 import { Select } from '../../../components/ui/select'
-import { organizationsCollection } from '../../../collections/organization'
-import {
-  defaultRoles,
-  formats,
-  matchesCollection,
-  teamSize,
-  validateMatch,
-} from '../../../collections/matches'
+import { matchesCollection } from '../../../collections/matches'
 import type {
   MatchFormat,
   MatchParticipant,
@@ -28,6 +20,12 @@ import type {
   TeamColor,
 } from '../../../collections/matches'
 import { peopleCollection } from '../../../collections/people'
+import {
+  defaultRoles,
+  formats,
+  teamSize,
+  validateMatch,
+} from '../../../domain/matches'
 import { cn } from '../../../lib/cn'
 
 export const Route = createFileRoute('/$organizationId/matches/new')({
@@ -50,15 +48,10 @@ const roleOptions: Array<{ value: PlayerRole; label: string }> = [
 function NewMatch() {
   const navigate = useNavigate()
   const { organizationId } = Route.useParams()
-  const organizations = useLiveQuery(() => organizationsCollection).data ?? []
-  const organization = organizations.find((item) => item.id === organizationId)
   const people = (useLiveQuery(() => peopleCollection).data ?? []).filter(
     (person) => person.organizationId === organizationId,
   )
-  const matches = useLiveQuery(() => matchesCollection).data ?? []
-  const activeMatch = matches.find(
-    (match) => match.organizationId === organizationId && !match.complete,
-  )
+  const matchesQuery = useLiveQuery(() => matchesCollection)
   const start = useMutation({
     mutationFn: async ({
       format,
@@ -67,8 +60,9 @@ function NewMatch() {
       format: MatchFormat
       participants: MatchParticipant[]
     }) => {
-      const match = matchesCollection.insert({
-        id: crypto.randomUUID(),
+      const matchId = crypto.randomUUID()
+      const transaction = matchesCollection.insert({
+        id: matchId,
         organizationId,
         format,
         participants,
@@ -79,47 +73,62 @@ function NewMatch() {
         score: null,
         eloChanges: null,
       })
-      await match.isPersisted.promise
-      return match.id
+      await transaction.isPersisted.promise
+      return matchId
     },
   })
   const [format, setFormat] = useState<MatchFormat>('1v1')
   const [participants, setParticipants] = useState<MatchParticipant[]>(
     createParticipants('1v1'),
   )
+  const [attemptedStart, setAttemptedStart] = useState(false)
 
-  if (!organization) return <EmptyOrganization />
-
-  if (activeMatch) {
+  if (matchesQuery.isLoading)
+    return <p className="text-sm text-muted">Loading…</p>
+  if (matchesQuery.isError)
     return (
-      <Navigate
-        to="/$organizationId/matches/$matchId"
-        params={{ organizationId, matchId: activeMatch.id }}
-      />
+      <p role="alert" className="text-sm text-danger">
+        Unable to read saved matches.
+      </p>
     )
-  }
 
   const error = start.error
-  const configurationError = validateMatch(format, participants)
+  const validPersonIds = new Set(people.map((person) => person.id))
+  const configurationError = validateMatch(
+    format,
+    participants,
+    undefined,
+    validPersonIds,
+  )
   const setPlayer = (index: number, personId: string) =>
     setParticipants((current) =>
       current.map((participant, itemIndex) =>
         itemIndex === index ? { ...participant, personId } : participant,
       ),
     )
-  const setRole = (index: number, role: MatchParticipant['role']) =>
-    setParticipants((current) =>
-      current.map((participant, itemIndex) =>
-        role === 'both' && participant.team === current[index].team
-          ? { ...participant, role }
-          : itemIndex === index
-            ? { ...participant, role }
+  const setRole = (index: number, role: MatchParticipant['role']) => {
+    setParticipants((current) => {
+      const selected = current[index]
+      if (role === 'both')
+        return current.map((participant) =>
+          participant.team === selected.team
+            ? { ...participant, role: 'both' }
             : participant,
-      ),
-    )
+        )
+
+      const teammateRole = role === 'attack' ? 'defence' : 'attack'
+      return current.map((participant, itemIndex) => {
+        if (participant.team !== selected.team) return participant
+        return {
+          ...participant,
+          role: itemIndex === index ? role : teammateRole,
+        }
+      })
+    })
+  }
 
   return (
-    <div className="animate-fade-up space-y-5">
+    <div className="space-y-5">
       <header>
         <h1 className="font-display text-2xl font-bold tracking-tight sm:text-3xl">
           Start match
@@ -129,67 +138,34 @@ function NewMatch() {
         </p>
       </header>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Match format</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div
-            role="radiogroup"
-            aria-label="Match format"
-            className="grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3"
-          >
-            {formats.map((item) => {
-              const selected = format === item.value
-              return (
-                <button
-                  key={item.value}
-                  type="button"
-                  role="radio"
-                  aria-checked={selected}
-                  onClick={() => {
-                    setFormat(item.value)
-                    setParticipants(createParticipants(item.value))
-                  }}
-                  className={cn(
-                    'flex flex-col items-center gap-2 rounded-xl border p-4 transition-all active:scale-[0.98]',
-                    selected
-                      ? 'border-brand bg-brand-soft shadow-sm'
-                      : 'border-border bg-card hover:border-surface-2 hover:bg-surface',
-                  )}
-                >
-                  <span
-                    className={cn(
-                      'flex items-center gap-1',
-                      selected ? 'text-brand' : 'text-faint',
-                    )}
-                  >
-                    {item.red === 2 ? (
-                      <Users className="size-4" aria-hidden />
-                    ) : (
-                      <User className="size-4" aria-hidden />
-                    )}
-                    <span className="text-xs font-bold">vs</span>
-                    {item.blue === 2 ? (
-                      <Users className="size-4" aria-hidden />
-                    ) : (
-                      <User className="size-4" aria-hidden />
-                    )}
-                  </span>
-                  <span
-                    className={cn(
-                      'font-display text-lg font-bold',
-                      selected ? 'text-brand' : 'text-text',
-                    )}
-                  >
-                    {item.value}
-                  </span>
-                </button>
-              )
-            })}
-          </div>
-        </CardContent>
-      </Card>
+      <section>
+        <h2 className="mb-2 text-sm font-semibold">Format</h2>
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          {formats.map((item) => {
+            const selected = format === item.value
+            return (
+              <button
+                key={item.value}
+                type="button"
+                aria-pressed={selected}
+                onClick={() => {
+                  setFormat(item.value)
+                  setParticipants(createParticipants(item.value))
+                  setAttemptedStart(false)
+                }}
+                className={cn(
+                  'rounded-lg border px-3 py-2.5 text-sm font-semibold transition-colors',
+                  selected
+                    ? 'border-brand bg-brand-soft text-brand'
+                    : 'border-border bg-card hover:border-surface-2 hover:bg-surface',
+                )}
+              >
+                {item.label}
+              </button>
+            )
+          })}
+        </div>
+      </section>
 
       <div className="grid gap-4 md:grid-cols-2">
         <TeamBuilder
@@ -210,51 +186,49 @@ function NewMatch() {
         />
       </div>
 
-      <Card className="sticky bottom-20 z-10 shadow-lg md:bottom-4">
-        <CardContent className="flex flex-wrap items-center justify-between gap-3 !pt-5">
-          <div className="text-sm">
-            {configurationError || error ? (
-              <p role="alert" className="font-medium text-danger">
-                {configurationError ?? error?.message}
-              </p>
-            ) : (
-              <p className="text-muted">Ready when you are.</p>
-            )}
-            {people.length < 2 && (
-              <p className="text-muted">
-                Add at least two people in{' '}
-                <Link
-                  to="/$organizationId/people"
-                  params={{ organizationId }}
-                  className="font-semibold text-brand hover:underline"
-                >
-                  People
-                </Link>{' '}
-                first.
-              </p>
-            )}
-          </div>
-          <Button
-            size="lg"
-            disabled={start.isPending || Boolean(configurationError)}
-            onClick={() =>
-              start.mutate(
-                { format, participants },
-                {
-                  onSuccess: (matchId) =>
-                    navigate({
-                      to: '/$organizationId/matches/$matchId',
-                      params: { organizationId, matchId },
-                    }),
-                },
-              )
-            }
-          >
-            <Play className="size-4" aria-hidden />
-            Start match
-          </Button>
-        </CardContent>
-      </Card>
+      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4">
+        <div className="text-sm">
+          {(attemptedStart && configurationError) || error ? (
+            <p role="alert" className="font-medium text-danger">
+              {(attemptedStart && configurationError) || error?.message}
+            </p>
+          ) : null}
+          {people.length < 2 && (
+            <p className="text-muted">
+              Add at least two people in{' '}
+              <Link
+                to="/$organizationId/people"
+                params={{ organizationId }}
+                className="font-semibold text-brand hover:underline"
+              >
+                People
+              </Link>{' '}
+              first.
+            </p>
+          )}
+        </div>
+        <Button
+          size="lg"
+          disabled={start.isPending || people.length < 2}
+          onClick={() => {
+            setAttemptedStart(true)
+            if (configurationError) return
+            start.mutate(
+              { format, participants },
+              {
+                onSuccess: (matchId) =>
+                  navigate({
+                    to: '/$organizationId/matches/$matchId',
+                    params: { organizationId, matchId },
+                  }),
+              },
+            )
+          }}
+        >
+          <Play className="size-4" aria-hidden />
+          Start match
+        </Button>
+      </div>
     </div>
   )
 }
@@ -294,13 +268,7 @@ function TeamBuilder({
       </CardHeader>
       <CardContent className="space-y-4">
         {indexes.map(({ participant, index }, slot) => (
-          <div
-            key={`${team}-${index}`}
-            className={cn(
-              'space-y-2.5 rounded-lg p-3',
-              team === 'red' ? 'bg-team-red-soft' : 'bg-team-blue-soft',
-            )}
-          >
+          <div key={`${team}-${index}`} className="space-y-2.5">
             <label className="block text-sm font-medium">
               {size > 1 ? `Player ${slot + 1}` : 'Player'}
               <Select
@@ -310,7 +278,14 @@ function TeamBuilder({
               >
                 <option value="">Select player</option>
                 {people.map((person) => (
-                  <option key={person.id} value={person.id}>
+                  <option
+                    key={person.id}
+                    value={person.id}
+                    disabled={participants.some(
+                      (item, itemIndex) =>
+                        itemIndex !== index && item.personId === person.id,
+                    )}
+                  >
                     {person.name}
                   </option>
                 ))}
@@ -326,9 +301,7 @@ function TeamBuilder({
                   onChange={(role) => setRole(index, role)}
                 />
               </div>
-            ) : (
-              <p className="text-xs text-muted">Plays both positions</p>
-            )}
+            ) : null}
           </div>
         ))}
       </CardContent>

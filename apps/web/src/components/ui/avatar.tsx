@@ -1,16 +1,6 @@
 import type { HTMLAttributes } from 'react'
 import { cn } from '../../lib/cn'
 
-const palette = [
-  '--brand',
-  '--accent',
-  '--team-blue',
-  '--success',
-  '--live',
-  '--warning',
-  '--team-red',
-]
-
 const sizes = {
   xs: 'size-6 text-[10px]',
   sm: 'size-8 text-xs',
@@ -28,8 +18,6 @@ export function Avatar({
   name: string
   size?: keyof typeof sizes
 }) {
-  const hash = [...name].reduce((acc, char) => acc + char.charCodeAt(0), 0)
-  const colorVar = palette[hash % palette.length]
   const initials = name
     .trim()
     .split(/\s+/)
@@ -41,14 +29,10 @@ export function Avatar({
     <span
       aria-hidden
       className={cn(
-        'inline-flex shrink-0 items-center justify-center rounded-full font-semibold',
+        'inline-flex shrink-0 items-center justify-center rounded-full bg-brand-soft font-semibold text-brand',
         sizes[size],
         className,
       )}
-      style={{
-        background: `color-mix(in srgb, var(${colorVar}) 18%, var(--card))`,
-        color: `var(${colorVar})`,
-      }}
       {...props}
     >
       {initials}

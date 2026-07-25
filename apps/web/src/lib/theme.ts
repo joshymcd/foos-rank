@@ -2,7 +2,7 @@ import { useCallback, useEffect, useSyncExternalStore } from 'react'
 import { themeStorageKey } from './theme-script'
 
 export type ThemePreference = 'system' | 'light' | 'dark'
-export type ResolvedTheme = 'light' | 'dark'
+type ResolvedTheme = 'light' | 'dark'
 
 const listeners = new Set<() => void>()
 let cachedPreference: ThemePreference | undefined
@@ -44,7 +44,7 @@ function emitPreference(preference: ThemePreference) {
 }
 
 function handleStorage(event: StorageEvent) {
-  if (event.key !== themeStorageKey) return
+  if (event.key !== themeStorageKey && event.key !== null) return
   const preference = getStoredPreference()
   applyPreference(preference)
   emitPreference(preference)
@@ -95,8 +95,6 @@ export function useTheme() {
 
   return {
     preference,
-    resolvedTheme:
-      typeof window === 'undefined' ? 'light' : resolveTheme(preference),
     setThemePreference,
   }
 }

@@ -12,8 +12,9 @@ export interface RankedPerson extends Person {
   streak: number
 }
 
-function matchWinner(match: Match): TeamColor | null {
+export function matchWinner(match: Match): TeamColor | null {
   if (!match.complete || !match.score) return null
+  if (match.score.red === match.score.blue) return null
   return match.score.red > match.score.blue ? 'red' : 'blue'
 }
 
@@ -71,36 +72,48 @@ function expectedScore(ratingA: number, ratingB: number) {
   return 1 / (1 + Math.pow(10, (ratingB - ratingA) / 400))
 }
 
-/**
- * Standard Elo for team games: each team's rating is the mean of its
- * members' ratings, and the full team delta is applied to every member.
- */
+function distributeChange(total: number, personIds: string[]): EloChange[] {
+  const base = Math.trunc(total / personIds.length)
+  let remainder = total - base * personIds.length
+  return personIds.map((personId) => {
+    const extra = remainder === 0 ? 0 : Math.sign(remainder)
+    remainder -= extra
+    return { personId, change: base + extra }
+  })
+}
+
+/** Each team's Elo change is shared across its players, keeping matches zero-sum. */
 export function calculateEloChanges(
   match: Pick<Match, 'participants' | 'score'>,
   people: Array<Pick<Person, 'id' | 'elo'>>,
 ): EloChange[] {
   if (!match.score) return []
+  if (match.score.red === match.score.blue) return []
   const teamRating = (team: TeamColor) => {
     const members = match.participants.filter(
       (participant) => participant.team === team,
     )
     if (members.length === 0) return INITIAL_ELO
-    const total = members.reduce(
-      (sum, participant) =>
-        sum +
-        (people.find((person) => person.id === participant.personId)?.elo ??
-          INITIAL_ELO),
-      0,
-    )
+    const total = members.reduce((sum, participant) => {
+      const person = people.find((item) => item.id === participant.personId)
+      if (!person) throw new Error('A match player is no longer on the roster.')
+      return sum + person.elo
+    }, 0)
     return total / members.length
   }
   const redExpected = expectedScore(teamRating('red'), teamRating('blue'))
   const redActual = match.score.red > match.score.blue ? 1 : 0
   const redDelta = Math.round(K_FACTOR * (redActual - redExpected))
-  return match.participants.map((participant) => ({
-    personId: participant.personId,
-    change: participant.team === 'red' ? redDelta : -redDelta,
-  }))
+  const redIds = match.participants
+    .filter((participant) => participant.team === 'red')
+    .map((participant) => participant.personId)
+  const blueIds = match.participants
+    .filter((participant) => participant.team === 'blue')
+    .map((participant) => participant.personId)
+  return [
+    ...distributeChange(redDelta, redIds),
+    ...distributeChange(-redDelta, blueIds),
+  ]
 }
 
 export interface EloHistoryPoint {
@@ -124,7 +137,9 @@ export function eloHistory(
     .sort((a, b) => (a.sequence ?? 0) - (b.sequence ?? 0))
   for (const match of completed) {
     if (
-      !match.participants.some((participant) => participant.personId === personId)
+      !match.participants.some(
+        (participant) => participant.personId === personId,
+      )
     )
       continue
     elo +=

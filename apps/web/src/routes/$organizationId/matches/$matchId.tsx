@@ -1,19 +1,16 @@
 import { Link, createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useLiveQuery } from '@tanstack/react-db'
 import { useMutation } from '@tanstack/react-query'
-import { ArrowLeft, Minus, Plus, Trash2, Trophy } from 'lucide-react'
+import { ArrowLeft, Minus, Plus, Trash2 } from 'lucide-react'
 import { useState } from 'react'
-import { EmptyOrganization } from '../../../components/app-shell'
 import { Scoreboard } from '../../../components/scoreboard'
-import { Avatar } from '../../../components/ui/avatar'
-import { Badge } from '../../../components/ui/badge'
 import { Button } from '../../../components/ui/button'
 import { Card, CardContent } from '../../../components/ui/card'
-import { organizationsCollection } from '../../../collections/organization'
-import { matchesCollection, validateMatch } from '../../../collections/matches'
+import { matchesCollection } from '../../../collections/matches'
 import type { TeamColor } from '../../../collections/matches'
 import { peopleCollection } from '../../../collections/people'
-import { calculateEloChanges } from '../../../domain/elo'
+import { calculateEloChanges, eloHistory } from '../../../domain/elo'
+import { validateMatch } from '../../../domain/matches'
 import { cn } from '../../../lib/cn'
 
 export const Route = createFileRoute('/$organizationId/matches/$matchId')({
@@ -23,8 +20,6 @@ export const Route = createFileRoute('/$organizationId/matches/$matchId')({
 function MatchDetail() {
   const navigate = useNavigate()
   const { organizationId, matchId } = Route.useParams()
-  const organizations = useLiveQuery(() => organizationsCollection).data ?? []
-  const organization = organizations.find((item) => item.id === organizationId)
   const people = (useLiveQuery(() => peopleCollection).data ?? []).filter(
     (person) => person.organizationId === organizationId,
   )
@@ -35,12 +30,21 @@ function MatchDetail() {
   const complete = useMutation({
     mutationFn: async (score: Record<TeamColor, number>) => {
       if (!match) throw new Error('Match not found.')
-      const scoreError = validateMatch(match.format, match.participants, score)
+      const validPersonIds = new Set(people.map((person) => person.id))
+      const scoreError = validateMatch(
+        match.format,
+        match.participants,
+        score,
+        validPersonIds,
+      )
       if (scoreError) throw new Error(scoreError)
       const sequence =
-        matches.filter(
-          (item) => item.organizationId === organizationId && item.complete,
-        ).length + 1
+        Math.max(
+          0,
+          ...matches
+            .filter((item) => item.organizationId === organizationId)
+            .map((item) => item.sequence ?? 0),
+        ) + 1
       const completedAt = new Date().toISOString()
       const eloChanges = calculateEloChanges(
         { participants: match.participants, score },
@@ -76,12 +80,11 @@ function MatchDetail() {
   })
   const [redScore, setRedScore] = useState(0)
   const [blueScore, setBlueScore] = useState(0)
-
-  if (!organization) return <EmptyOrganization />
+  const [attemptedComplete, setAttemptedComplete] = useState(false)
 
   if (!match) {
     return (
-      <div className="animate-fade-up space-y-4">
+      <div className="space-y-4">
         <BackLink organizationId={organizationId} />
         <p className="text-muted">
           Match not found.{' '}
@@ -99,15 +102,20 @@ function MatchDetail() {
 
   if (!match.complete) {
     const score = { red: redScore, blue: blueScore }
-    const scoreError = validateMatch(match.format, match.participants, score)
+    const scoreError = validateMatch(
+      match.format,
+      match.participants,
+      score,
+      new Set(people.map((person) => person.id)),
+    )
     return (
-      <div className="animate-fade-up mx-auto max-w-2xl space-y-5">
+      <div className="mx-auto max-w-2xl space-y-5">
         <div className="flex items-center justify-between">
           <BackLink organizationId={organizationId} />
-          <Badge tone="live">
-            <span className="size-1.5 animate-pulse-dot rounded-full bg-live" />
-            Live · {match.format}
-          </Badge>
+          <span className="inline-flex items-center gap-1 rounded-full bg-pending-soft px-2 py-0.5 text-xs font-semibold text-pending">
+            <span className="size-1.5 rounded-full bg-pending" />
+            Pending · {match.format}
+          </span>
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2">
@@ -130,9 +138,13 @@ function MatchDetail() {
         <Card>
           <CardContent className="flex flex-wrap items-center justify-between gap-3 !pt-5">
             <div className="text-sm">
-              {(scoreError || complete.error || cancel.error) && (
+              {((attemptedComplete && scoreError) ||
+                complete.error ||
+                cancel.error) && (
                 <p role="alert" className="font-medium text-danger">
-                  {scoreError ?? complete.error?.message ?? cancel.error?.message}
+                  {(attemptedComplete && scoreError) ||
+                    complete.error?.message ||
+                    cancel.error?.message}
                 </p>
               )}
             </div>
@@ -157,8 +169,11 @@ function MatchDetail() {
               </Button>
               <Button
                 size="lg"
-                disabled={complete.isPending || Boolean(scoreError)}
-                onClick={() => complete.mutate(score)}
+                disabled={complete.isPending}
+                onClick={() => {
+                  setAttemptedComplete(true)
+                  if (!scoreError) complete.mutate(score)
+                }}
               >
                 Save result
               </Button>
@@ -169,40 +184,17 @@ function MatchDetail() {
     )
   }
 
-  const winner = match.score
-    ? match.score.red > match.score.blue
-      ? 'red'
-      : 'blue'
-    : null
-
   return (
-    <div className="animate-fade-up mx-auto max-w-2xl space-y-5">
+    <div className="mx-auto max-w-2xl space-y-5">
       <div className="flex items-center justify-between">
         <BackLink organizationId={organizationId} />
-        <Badge tone="neutral">
+        <span className="text-sm text-muted">
           {match.format} ·{' '}
           {new Date(match.completedAt ?? match.startedAt).toLocaleDateString()}
-        </Badge>
+        </span>
       </div>
 
-      <Card className="animate-scale-in p-6 sm:p-8">
-        <div className="mb-5 flex items-center justify-center gap-2">
-          <Trophy
-            className={cn(
-              'size-5',
-              winner === 'red' ? 'text-team-red' : 'text-team-blue',
-            )}
-            aria-hidden
-          />
-          <h1
-            className={cn(
-              'font-display text-xl font-bold capitalize',
-              winner === 'red' ? 'text-team-red' : 'text-team-blue',
-            )}
-          >
-            {winner} team wins
-          </h1>
-        </div>
+      <Card className="p-5 sm:p-6">
         <Scoreboard match={match} people={people} />
       </Card>
 
@@ -216,36 +208,42 @@ function MatchDetail() {
               const person = people.find(
                 (item) => item.id === participant.personId,
               )
-              const change =
-                match.eloChanges?.find(
-                  (item) => item.personId === participant.personId,
-                )?.change ?? 0
+              const eloChange = match.eloChanges?.find(
+                (item) => item.personId === participant.personId,
+              )
+              const postMatchElo =
+                match.sequence === null
+                  ? undefined
+                  : eloHistory(participant.personId, matches).find(
+                      (point) => point.sequence === match.sequence,
+                    )?.elo
               return (
                 <div
                   key={participant.personId + participant.role}
                   className="flex items-center gap-3 py-2.5 text-sm"
                 >
-                  <Avatar name={person?.name ?? 'Unknown'} size="xs" />
-                  <span className="min-w-0 flex-1 truncate">
-                    <strong>{person?.name ?? 'Unknown'}</strong>
-                    <span className="text-muted">
-                      {' '}
-                      · {participant.team} · {participant.role}
-                    </span>
-                  </span>
+                  <strong className="min-w-0 flex-1 truncate">
+                    {person?.name ?? 'Unknown player'}
+                  </strong>
                   <span
                     className={cn(
                       'font-semibold tabular-nums',
-                      change > 0 && 'text-success',
-                      change < 0 && 'text-danger',
-                      change === 0 && 'text-faint',
+                      eloChange && eloChange.change > 0 && 'text-success',
+                      eloChange && eloChange.change < 0 && 'text-danger',
+                      (!eloChange || eloChange.change === 0) && 'text-faint',
                     )}
                   >
-                    {change > 0 ? `+${change}` : change}
+                    {eloChange
+                      ? eloChange.change > 0
+                        ? `+${eloChange.change}`
+                        : eloChange.change
+                      : 'Not tracked'}
                   </span>
-                  <span className="w-12 text-right font-display font-bold tabular-nums">
-                    {Math.round(person?.elo ?? 1000)}
-                  </span>
+                  {postMatchElo !== undefined && eloChange && (
+                    <span className="w-12 text-right font-display font-bold tabular-nums">
+                      {Math.round(postMatchElo)}
+                    </span>
+                  )}
                 </div>
               )
             })}
@@ -277,7 +275,9 @@ function ScorePanel({
   onChange,
 }: {
   team: TeamColor
-  match: { participants: Array<{ personId: string; team: TeamColor; role: string }> }
+  match: {
+    participants: Array<{ personId: string; team: TeamColor; role: string }>
+  }
   people: Array<{ id: string; name: string }>
   value: number
   onChange: (value: number) => void
@@ -334,7 +334,7 @@ function ScorePanel({
             const next = Number(event.target.value)
             if (Number.isFinite(next)) clamp(next)
           }}
-          className="w-24 rounded-lg border border-border bg-card py-2 text-center font-display text-5xl font-bold tabular-nums text-text focus:border-brand focus:outline-none"
+          className="w-24 rounded-lg border border-border bg-card py-2 text-center font-display text-5xl font-bold tabular-nums text-text focus:border-brand"
         />
         <Button
           variant="outline"
