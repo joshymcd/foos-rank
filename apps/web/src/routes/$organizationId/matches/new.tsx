@@ -51,7 +51,6 @@ function NewMatch() {
   const people = (useLiveQuery(() => peopleCollection).data ?? []).filter(
     (person) => person.organizationId === organizationId,
   )
-  const matchesQuery = useLiveQuery(() => matchesCollection)
   const start = useMutation({
     mutationFn: async ({
       format,
@@ -82,15 +81,6 @@ function NewMatch() {
     createParticipants('1v1'),
   )
   const [attemptedStart, setAttemptedStart] = useState(false)
-
-  if (matchesQuery.isLoading)
-    return <p className="text-sm text-muted">Loading…</p>
-  if (matchesQuery.isError)
-    return (
-      <p role="alert" className="text-sm text-danger">
-        Unable to read saved matches.
-      </p>
-    )
 
   const error = start.error
   const validPersonIds = new Set(people.map((person) => person.id))

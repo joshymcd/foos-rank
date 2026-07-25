@@ -1,216 +1,46 @@
-# Foosball Tracker
+# FoosRank
 
-# Getting Started
+A local-first foosball match and Elo tracker built with TanStack Start, TanStack DB, React, and Tailwind CSS.
 
-Install the workspace dependencies and run the TanStack Start application:
-
-```bash
-npm install
-npm run dev
-```
-
-# Building For Production
-
-To build this application for production:
+## Development
 
 ```bash
-npm run build
+corepack enable
+pnpm install
+pnpm dev
 ```
 
-## Styling
+The web app runs at `http://localhost:3000`. Organizations, players, and matches are stored in browser localStorage.
 
-This is an npm workspace monorepo:
+## Commands
 
-```
-apps/web  TanStack Start application
-```
-
-SST infrastructure is configured from the repository root in `sst.config.ts`. Use `npm run sst -- dev`, `npm run sst -- diff`, and `npm run sst -- deploy` for infrastructure workflows.
-
-The web application uses [Tailwind CSS](https://tailwindcss.com/) for styling.
-
-### Removing Tailwind CSS
-
-If you prefer not to use Tailwind CSS:
-
-1. Remove the demo pages in `apps/web/src/routes/demo/`
-2. Replace the Tailwind import in `apps/web/src/styles.css` with your own styles
-3. Remove `tailwindcss()` from the plugins array in `apps/web/vite.config.ts`
-4. Remove `@tailwindcss/vite` and `tailwindcss` from `apps/web/package.json`
-
-## Linting & Formatting
-
-
-This project uses [eslint](https://eslint.org/) and [prettier](https://prettier.io/) for linting and formatting. Eslint is configured using [tanstack/eslint-config](https://tanstack.com/config/latest/docs/eslint). Run these from the repository root:
+Run these from the repository root:
 
 ```bash
-npm run lint
-npm run format
-npm run check
+pnpm check       # Prettier
+pnpm lint        # ESLint
+pnpm typecheck   # TypeScript
+pnpm test        # Vitest unit tests
+pnpm test:e2e    # Playwright browser tests
+pnpm build       # Production build
 ```
 
-
-## Deploy with Nitro
-
-This project uses Nitro as a generic server adapter, so it can run on any Node-compatible host.
+Install Playwright's Chromium browser before running E2E tests locally:
 
 ```bash
-npm run build
-node apps/web/.output/server/index.mjs
+pnpm --filter @foos-rank/web exec playwright install chromium
 ```
 
-The build output is a self-contained Node server in `apps/web/.output`. To deploy without SST, push that directory to your host (Render, Fly.io, your own VPS, etc.) and run the server command above.
+## Structure
 
-For host-specific presets (Vercel, Netlify, Cloudflare, AWS Lambda, etc.) and tuning, see https://v3.nitro.build/deploy.
-
-
-
-## Routing
-
-The web app uses [TanStack Router](https://tanstack.com/router) with file-based routing. Routes are managed as files in `apps/web/src/routes`.
-
-### Adding A Route
-
-To add a new route to your application just add a new file in the `apps/web/src/routes` directory.
-
-TanStack will automatically generate the content of the route file for you.
-
-Now that you have two routes you can use a `Link` component to navigate between them.
-
-### Adding Links
-
-To use SPA (Single Page Application) navigation you will need to import the `Link` component from `@tanstack/react-router`.
-
-```tsx
-import { Link } from "@tanstack/react-router";
+```text
+apps/web/src/collections  TanStack DB collections and persistence
+apps/web/src/domain       Match and Elo rules
+apps/web/src/routes       TanStack Router pages and layouts
+apps/web/src/components   Shared UI
+apps/web/tests/e2e        Playwright workflows
 ```
 
-Then anywhere in your JSX you can use it like so:
+Route loaders preload the local collections before rendering. Components continue to use `useLiveQuery` so mutations update the UI reactively.
 
-```tsx
-<Link to="/about">About</Link>
-```
-
-This will create a link that will navigate to the `/about` route.
-
-More information on the `Link` component can be found in the [Link documentation](https://tanstack.com/router/v1/docs/framework/react/api/router/linkComponent).
-
-### Using A Layout
-
-In the File Based Routing setup the layout is located in `apps/web/src/routes/__root.tsx`. Anything you add to the root route will appear in all the routes. The route content will appear in the JSX where you render `{children}` in the `shellComponent`.
-
-Here is an example layout that includes a header:
-
-```tsx
-import { HeadContent, Scripts, createRootRoute } from '@tanstack/react-router'
-
-export const Route = createRootRoute({
-  head: () => ({
-    meta: [
-      { charSet: 'utf-8' },
-      { name: 'viewport', content: 'width=device-width, initial-scale=1' },
-      { title: 'My App' },
-    ],
-  }),
-  shellComponent: ({ children }) => (
-    <html lang="en">
-      <head>
-        <HeadContent />
-      </head>
-      <body>
-        <header>
-          <nav>
-            <Link to="/">Home</Link>
-            <Link to="/about">About</Link>
-          </nav>
-        </header>
-        {children}
-        <Scripts />
-      </body>
-    </html>
-  ),
-})
-```
-
-More information on layouts can be found in the [Layouts documentation](https://tanstack.com/router/latest/docs/framework/react/guide/routing-concepts#layouts).
-
-## Server Functions
-
-TanStack Start provides server functions that allow you to write server-side code that seamlessly integrates with your client components.
-
-```tsx
-import { createServerFn } from '@tanstack/react-start'
-
-const getServerTime = createServerFn({
-  method: 'GET',
-}).handler(async () => {
-  return new Date().toISOString()
-})
-
-// Use in a component
-function MyComponent() {
-  const [time, setTime] = useState('')
-  
-  useEffect(() => {
-    getServerTime().then(setTime)
-  }, [])
-  
-  return <div>Server time: {time}</div>
-}
-```
-
-## API Routes
-
-You can create API routes by using the `server` property in your route definitions:
-
-```tsx
-import { createFileRoute } from '@tanstack/react-router'
-import { json } from '@tanstack/react-start'
-
-export const Route = createFileRoute('/api/hello')({
-  server: {
-    handlers: {
-      GET: () => json({ message: 'Hello, World!' }),
-    },
-  },
-})
-```
-
-## Data Fetching
-
-There are multiple ways to fetch data in your application. You can use TanStack Query to fetch data from a server. But you can also use the `loader` functionality built into TanStack Router to load the data for a route before it's rendered.
-
-For example:
-
-```tsx
-import { createFileRoute } from '@tanstack/react-router'
-
-export const Route = createFileRoute('/people')({
-  loader: async () => {
-    const response = await fetch('https://swapi.dev/api/people')
-    return response.json()
-  },
-  component: PeopleComponent,
-})
-
-function PeopleComponent() {
-  const data = Route.useLoaderData()
-  return (
-    <ul>
-      {data.results.map((person) => (
-        <li key={person.name}>{person.name}</li>
-      ))}
-    </ul>
-  )
-}
-```
-
-Loaders simplify your data fetching logic dramatically. Check out more information in the [Loader documentation](https://tanstack.com/router/latest/docs/framework/react/guide/data-loading#loader-parameters).
-
-
-
-# Learn More
-
-You can learn more about all of the offerings from TanStack in the [TanStack documentation](https://tanstack.com).
-
-For TanStack Start specific documentation, visit [TanStack Start](https://tanstack.com/start).
+GitHub Actions runs formatting, linting, type checking, unit tests, the production build, and Playwright tests on pushes to `main` and pull requests.

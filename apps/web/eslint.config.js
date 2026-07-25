@@ -15,6 +15,13 @@ export default [
     },
   },
   {
-    ignores: ['.output', 'eslint.config.js', 'prettier.config.js'],
+    ignores: [
+      '.output',
+      'blob-report',
+      'playwright-report',
+      'test-results',
+      'eslint.config.js',
+      'prettier.config.js',
+    ],
   },
 ]

@@ -12,3 +12,6 @@ dist-ssr
 .vinxi
 __unconfig*
 todos.json
+apps/web/blob-report
+apps/web/playwright-report
+apps/web/test-results

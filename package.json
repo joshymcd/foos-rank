@@ -2,9 +2,15 @@
   "name": "foos-rank",
   "private": true,
   "scripts": {
+    "build": "pnpm --filter @foos-rank/web build",
+    "check": "pnpm --filter @foos-rank/web check",
     "dev": "pnpm --filter @foos-rank/web dev",
+    "lint": "pnpm --filter @foos-rank/web lint",
     "sst:dev": "sst dev",
-    "deploy": "sst deploy"
+    "deploy": "sst deploy",
+    "test": "pnpm --filter @foos-rank/web test",
+    "test:e2e": "pnpm --filter @foos-rank/web test:e2e",
+    "typecheck": "pnpm --filter @foos-rank/web typecheck"
   },
   "devDependencies": {
     "@tsconfig/node22": "^22.0.5",

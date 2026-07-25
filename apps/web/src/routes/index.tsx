@@ -11,7 +11,15 @@ import { organizationsCollection } from '../collections/organization'
 import { peopleCollection } from '../collections/people'
 import { INITIAL_ELO } from '../domain/elo'
 
-export const Route = createFileRoute('/')({ component: Home })
+export const Route = createFileRoute('/')({
+  loader: async () => {
+    await Promise.all([
+      organizationsCollection.preload(),
+      peopleCollection.preload(),
+    ])
+  },
+  component: Home,
+})
 
 function Home() {
   const navigate = useNavigate()
