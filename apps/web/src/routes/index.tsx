@@ -1,22 +1,13 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useLiveQuery } from '@tanstack/react-db'
-import { useMutation } from '@tanstack/react-query'
 import { ChevronRight, Trophy } from 'lucide-react'
-import { useState } from 'react'
-import { Button } from '../components/ui/button'
 import { Card } from '../components/ui/card'
-import { Input } from '../components/ui/input'
 import { ThemeToggle } from '../components/ui/theme-toggle'
 import { organizationsCollection } from '../collections/organization'
-import { peopleCollection } from '../collections/people'
-import { INITIAL_ELO } from '../domain/elo'
 
 export const Route = createFileRoute('/')({
   loader: async () => {
-    await Promise.all([
-      organizationsCollection.preload(),
-      peopleCollection.preload(),
-    ])
+    await organizationsCollection.preload()
   },
   component: Home,
 })
@@ -24,64 +15,6 @@ export const Route = createFileRoute('/')({
 function Home() {
   const navigate = useNavigate()
   const organizations = useLiveQuery(() => organizationsCollection).data ?? []
-  const [organizationName, setOrganizationName] = useState('')
-  const [personName, setPersonName] = useState('')
-  const createOrganization = useMutation({
-    mutationFn: async ({
-      name,
-      playerName,
-      id,
-    }: {
-      name: string
-      playerName: string
-      id: string
-    }) => {
-      if (!name || !playerName || !id)
-        throw new Error('Enter an organization name and your name.')
-      if (organizations.some((organization) => organization.id === id))
-        throw new Error('An organization with that name already exists.')
-
-      const personId = crypto.randomUUID()
-      const person = peopleCollection.insert({
-        id: personId,
-        organizationId: id,
-        name: playerName,
-        normalizedName: playerName.toLowerCase(),
-        elo: INITIAL_ELO,
-        createdAt: new Date().toISOString(),
-      })
-      await person.isPersisted.promise
-
-      try {
-        const organization = organizationsCollection.insert({
-          id,
-          name,
-          createdAt: new Date().toISOString(),
-        })
-        await organization.isPersisted.promise
-      } catch (error) {
-        await peopleCollection.delete(personId).isPersisted.promise
-        throw error
-      }
-    },
-  })
-
-  const submit = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
-    const name = organizationName.trim()
-    const playerName = personName.trim()
-    const id = name
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-|-$/g, '')
-    createOrganization.mutate(
-      { name, playerName, id },
-      {
-        onSuccess: () =>
-          navigate({ to: '/$organizationId', params: { organizationId: id } }),
-      },
-    )
-  }
 
   return (
     <main className="min-h-screen bg-bg px-4 py-6 sm:px-6 sm:py-10">
@@ -101,12 +34,12 @@ function Home() {
           <ThemeToggle />
         </header>
 
-        <Card className="overflow-hidden">
-          {organizations.length > 0 && (
-            <section className="border-b border-border p-5">
-              <h1 className="font-display text-xl font-bold">
-                Your organizations
-              </h1>
+        <Card className="p-5">
+          <section>
+            <h1 className="font-display text-xl font-bold">
+              Your organizations
+            </h1>
+            {organizations.length > 0 ? (
               <div className="mt-3 divide-y divide-border">
                 {organizations.map((organization) => (
                   <button
@@ -125,52 +58,11 @@ function Home() {
                   </button>
                 ))}
               </div>
-            </section>
-          )}
-
-          <section className="p-5">
-            <h2 className="font-display text-xl font-bold">
-              {organizations.length > 0
-                ? 'Create another organization'
-                : 'Create your organization'}
-            </h2>
-            <p className="mt-1 text-sm text-muted">
-              Data is stored in this browser.
-            </p>
-            <form onSubmit={submit} className="mt-5 space-y-4">
-              <label className="block text-sm font-medium">
-                Organization name
-                <Input
-                  value={organizationName}
-                  onChange={(event) => setOrganizationName(event.target.value)}
-                  className="mt-1.5"
-                  placeholder="Acme Ltd"
-                  required
-                />
-              </label>
-              <label className="block text-sm font-medium">
-                Your name
-                <Input
-                  value={personName}
-                  onChange={(event) => setPersonName(event.target.value)}
-                  className="mt-1.5"
-                  placeholder="Alex Morgan"
-                  required
-                />
-              </label>
-              {createOrganization.error && (
-                <p role="alert" className="text-sm text-danger">
-                  {createOrganization.error.message}
-                </p>
-              )}
-              <Button
-                type="submit"
-                disabled={createOrganization.isPending}
-                className="w-full"
-              >
-                Create organization
-              </Button>
-            </form>
+            ) : (
+              <p className="mt-3 text-sm text-muted">
+                No organizations are stored in this browser.
+              </p>
+            )}
           </section>
         </Card>
       </div>

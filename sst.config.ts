@@ -10,8 +10,14 @@ export default $config({
     };
   },
   async run() {
+    const domain =
+      $app.stage === "production"
+        ? "foosball.joshmc.dev"
+        : `${$app.stage}.foosball.joshmc.dev`;
+
     const webapp = new sst.aws.TanStackStart("MyWeb", {
       path: "apps/web/",
+      domain,
     });
 
     return {

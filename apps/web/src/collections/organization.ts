@@ -40,5 +40,19 @@ export const organizationsCollection = createCollection(
         return next
       })
     },
+    onUpdate: async ({ transaction }) => {
+      updateStoredArray<Organization>(storageKey, (organizations) => {
+        const next = [...organizations]
+        for (const mutation of transaction.mutations) {
+          const organization = mutation.modified
+          const index = next.findIndex((item) => item.id === organization.id)
+          if (index < 0) throw new Error('Organization not found.')
+          if (!organization.name.trim())
+            throw new Error('Enter an organization name.')
+          next[index] = organization
+        }
+        return next
+      })
+    },
   }),
 )
