@@ -10,6 +10,7 @@ import {
   setupOrganizationInputSchema,
   startMatchInputSchema,
   updateOrganizationInputSchema,
+  updatePendingMatchInputSchema,
 } from '../domain/entities'
 import {
   addPerson,
@@ -22,6 +23,7 @@ import {
   setupOrganization,
   startMatch,
   updateOrganization,
+  updatePendingMatch,
 } from './foosrank-repository.server'
 
 export const getOrganizationsFn = createServerFn({ method: 'GET' })
@@ -55,6 +57,10 @@ export const deletePersonFn = createServerFn({ method: 'POST' })
 export const startMatchFn = createServerFn({ method: 'POST' })
   .validator(startMatchInputSchema)
   .handler(({ data }) => startMatch(data))
+
+export const updatePendingMatchFn = createServerFn({ method: 'POST' })
+  .validator(updatePendingMatchInputSchema)
+  .handler(({ data }) => updatePendingMatch(data))
 
 export const cancelMatchFn = createServerFn({ method: 'POST' })
   .validator(matchInputSchema)

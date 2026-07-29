@@ -519,6 +519,102 @@ export async function startMatch(input: {
   return matchSchema.parse(match)
 }
 
+export async function updatePendingMatch(input: {
+  organizationId: string
+  matchId: string
+  format: MatchFormat
+  participants: MatchParticipant[]
+}) {
+  const current = await getItem<Match>(
+    input.organizationId,
+    matchSk(input.matchId),
+  )
+  if (!current) throw new Error('Match not found.')
+  if (current.entity.complete) throw new Error('Match is already complete.')
+
+  const people = await Promise.all(
+    input.participants.map((participant) =>
+      getItem<Person>(input.organizationId, personSk(participant.personId)),
+    ),
+  )
+  const validationError = validateMatch(
+    input.format,
+    input.participants,
+    undefined,
+    new Set(people.flatMap((item) => (item ? [item.entity.id] : []))),
+  )
+  if (validationError) throw new Error(validationError)
+
+  const previousIds = new Set(
+    current.entity.participants.map((participant) => participant.personId),
+  )
+  const nextIds = new Set(
+    input.participants.map((participant) => participant.personId),
+  )
+  const removedIds = [...previousIds].filter((id) => !nextIds.has(id))
+  const addedIds = [...nextIds].filter((id) => !previousIds.has(id))
+  const match = matchSchema.parse({
+    ...current.entity,
+    format: input.format,
+    participants: input.participants,
+  })
+
+  try {
+    await client.send(
+      new TransactWriteCommand({
+        TransactItems: [
+          {
+            Put: {
+              TableName: tableName,
+              Item: { ...current, entity: match },
+              ConditionExpression:
+                '#entity.#complete = :false AND #entity.#format = :previousFormat AND #entity.#participants = :previousParticipants',
+              ExpressionAttributeNames: {
+                '#entity': 'entity',
+                '#complete': 'complete',
+                '#format': 'format',
+                '#participants': 'participants',
+              },
+              ExpressionAttributeValues: {
+                ':false': false,
+                ':previousFormat': current.entity.format,
+                ':previousParticipants': current.entity.participants,
+              },
+            },
+          },
+          ...removedIds.map((personId) => ({
+            Update: {
+              TableName: tableName,
+              Key: { pk: pk(input.organizationId), sk: personSk(personId) },
+              UpdateExpression:
+                'SET matchCount = matchCount - :one, #version = #version + :one',
+              ConditionExpression: 'matchCount >= :one',
+              ExpressionAttributeNames: { '#version': 'version' },
+              ExpressionAttributeValues: { ':one': 1 },
+            },
+          })),
+          ...addedIds.map((personId) => ({
+            Update: {
+              TableName: tableName,
+              Key: { pk: pk(input.organizationId), sk: personSk(personId) },
+              UpdateExpression:
+                'SET matchCount = matchCount + :one, #version = #version + :one',
+              ConditionExpression: 'attribute_exists(pk)',
+              ExpressionAttributeNames: { '#version': 'version' },
+              ExpressionAttributeValues: { ':one': 1 },
+            },
+          })),
+        ],
+      }),
+    )
+  } catch (error) {
+    if (isTransactionConflict(error))
+      throw new Error('Match changed. Refresh and try again.')
+    throw error
+  }
+  return match
+}
+
 export async function cancelMatch(input: {
   organizationId: string
   matchId: string
@@ -537,12 +633,19 @@ export async function cancelMatch(input: {
             Delete: {
               TableName: tableName,
               Key: { pk: pk(input.organizationId), sk: matchSk(input.matchId) },
-              ConditionExpression: '#entity.#complete = :false',
+              ConditionExpression:
+                '#entity.#complete = :false AND #entity.#format = :format AND #entity.#participants = :participants',
               ExpressionAttributeNames: {
                 '#entity': 'entity',
                 '#complete': 'complete',
+                '#format': 'format',
+                '#participants': 'participants',
               },
-              ExpressionAttributeValues: { ':false': false },
+              ExpressionAttributeValues: {
+                ':false': false,
+                ':format': current.entity.format,
+                ':participants': current.entity.participants,
+              },
             },
           },
           ...current.entity.participants.map((participant) => ({
@@ -643,12 +746,19 @@ export async function completeMatch(input: {
               Put: {
                 TableName: tableName,
                 Item: { ...matchItem, entity: completedMatch },
-                ConditionExpression: '#entity.#complete = :false',
+                ConditionExpression:
+                  '#entity.#complete = :false AND #entity.#format = :format AND #entity.#participants = :participants',
                 ExpressionAttributeNames: {
                   '#entity': 'entity',
                   '#complete': 'complete',
+                  '#format': 'format',
+                  '#participants': 'participants',
                 },
-                ExpressionAttributeValues: { ':false': false },
+                ExpressionAttributeValues: {
+                  ':false': false,
+                  ':format': match.format,
+                  ':participants': match.participants,
+                },
               },
             },
             ...updatedPeople.map(({ item, person }) => {

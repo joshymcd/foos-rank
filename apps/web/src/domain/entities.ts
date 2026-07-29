@@ -133,6 +133,7 @@ export const startMatchInputSchema = z
     participants: z.array(participantSchema).min(2).max(4),
   })
   .strict()
+export const updatePendingMatchInputSchema = startMatchInputSchema
 export const matchInputSchema = z
   .object({
     organizationId: organizationIdSchema,
