@@ -76,9 +76,15 @@ test('creates an organization and records a match', async ({ page }) => {
   await expect(
     page.getByRole('complementary').getByText('Acme Foosball'),
   ).toBeVisible()
+  await page.getByLabel('Name for Bob Smith').fill('Robert Smith')
+  await page.getByLabel('Name for Bob Smith').press('Enter')
+  await expect(page.getByText('Player name saved.')).toBeVisible()
   await page.reload()
   await expect(page.getByLabel('Organization name')).toHaveValue(
     'Acme Foosball',
+  )
+  await expect(page.getByLabel('Name for Robert Smith')).toHaveValue(
+    'Robert Smith',
   )
   expect(errors).toEqual([])
 })
