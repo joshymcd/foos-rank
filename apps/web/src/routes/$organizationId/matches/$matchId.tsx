@@ -1,6 +1,6 @@
-import { Link, createFileRoute, useNavigate } from '@tanstack/react-router'
+import { Link, createFileRoute } from '@tanstack/react-router'
 import { useMutation, useQuery } from '@tanstack/react-query'
-import { ArrowLeft, Minus, Plus, Trash2 } from 'lucide-react'
+import { ArrowLeft, Minus, Plus } from 'lucide-react'
 import { useState } from 'react'
 import { Scoreboard } from '../../../components/scoreboard'
 import { Button } from '../../../components/ui/button'
@@ -13,17 +13,13 @@ import { eloHistory } from '../../../domain/elo'
 import type { TeamColor } from '../../../domain/entities'
 import { validateMatch } from '../../../domain/matches'
 import { cn } from '../../../lib/cn'
-import {
-  cancelMatchFn,
-  completeMatchFn,
-} from '../../../server/foosrank.functions'
+import { completeMatchFn } from '../../../server/foosrank.functions'
 
 export const Route = createFileRoute('/$organizationId/matches/$matchId')({
   component: MatchDetail,
 })
 
 function MatchDetail() {
-  const navigate = useNavigate()
   const { organizationId, matchId } = Route.useParams()
   const snapshot = useQuery(organizationSnapshotOptions(organizationId)).data
   const people = snapshot?.people ?? []
@@ -46,16 +42,6 @@ function MatchDetail() {
         data: { organizationId, matchId, score },
       })
       await refreshOrganization(organizationId)
-    },
-  })
-  const cancel = useMutation({
-    mutationFn: async () => {
-      if (match) {
-        await cancelMatchFn({
-          data: { organizationId, matchId: match.id },
-        })
-        await refreshOrganization(organizationId)
-      }
     },
   })
   const [redScore, setRedScore] = useState(0)
@@ -118,46 +104,22 @@ function MatchDetail() {
         <Card>
           <CardContent className="flex flex-wrap items-center justify-between gap-3 !pt-5">
             <div className="text-sm">
-              {((attemptedComplete && scoreError) ||
-                complete.error ||
-                cancel.error) && (
+              {((attemptedComplete && scoreError) || complete.error) && (
                 <p role="alert" className="font-medium text-danger">
-                  {(attemptedComplete && scoreError) ||
-                    complete.error?.message ||
-                    cancel.error?.message}
+                  {(attemptedComplete && scoreError) || complete.error?.message}
                 </p>
               )}
             </div>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="ghost"
-                className="text-danger hover:bg-danger/10 hover:text-danger"
-                disabled={cancel.isPending}
-                onClick={() => {
-                  if (window.confirm('Cancel and delete this match?'))
-                    cancel.mutate(undefined, {
-                      onSuccess: () =>
-                        navigate({
-                          to: '/$organizationId/matches',
-                          params: { organizationId },
-                        }),
-                    })
-                }}
-              >
-                <Trash2 className="size-4" aria-hidden />
-                Cancel match
-              </Button>
-              <Button
-                size="lg"
-                disabled={complete.isPending}
-                onClick={() => {
-                  setAttemptedComplete(true)
-                  if (!scoreError) complete.mutate(score)
-                }}
-              >
-                Save result
-              </Button>
-            </div>
+            <Button
+              size="lg"
+              disabled={complete.isPending}
+              onClick={() => {
+                setAttemptedComplete(true)
+                if (!scoreError) complete.mutate(score)
+              }}
+            >
+              Save result
+            </Button>
           </CardContent>
         </Card>
       </div>

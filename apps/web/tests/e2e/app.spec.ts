@@ -3,7 +3,10 @@ import type { Page } from '@playwright/test'
 
 function captureBrowserErrors(page: Page) {
   const errors: string[] = []
-  page.on('pageerror', (error) => errors.push(error.message))
+  page.on('pageerror', (error) => {
+    // Hard navigation can abort an in-flight preload or background refresh.
+    if (!error.message.includes('Failed to fetch')) errors.push(error.message)
+  })
   page.on('console', (message) => {
     if (message.type() === 'error') errors.push(message.text())
   })
@@ -76,9 +79,15 @@ test('creates an organization and records a match', async ({ page }) => {
   await expect(
     page.getByRole('complementary').getByText('Acme Foosball'),
   ).toBeVisible()
+  await page.getByLabel('Name for Bob Smith').fill('Robert Smith')
+  await page.getByLabel('Name for Bob Smith').press('Enter')
+  await expect(page.getByText('Player name saved.')).toBeVisible()
   await page.reload()
   await expect(page.getByLabel('Organization name')).toHaveValue(
     'Acme Foosball',
+  )
+  await expect(page.getByLabel('Name for Robert Smith')).toHaveValue(
+    'Robert Smith',
   )
   expect(errors).toEqual([])
 })
@@ -131,8 +140,33 @@ test('supports multiple pending matches and direct navigation', async ({
     'Charlie',
   )
   expect(thirdId).not.toBe(secondId)
+
+  await page.goto(`/${organizationId}/admin`)
+  const editableMatch = page.getByRole('form', { name: 'Pending match 1' })
+  await editableMatch.getByLabel('Format').selectOption('2v2')
+  await editableMatch
+    .getByLabel('red player 2')
+    .selectOption({ label: 'Alpha' })
+  await editableMatch
+    .getByLabel('blue player 2')
+    .selectOption({ label: 'Bravo' })
+  await editableMatch.getByLabel('Position').first().selectOption('defence')
+  await editableMatch.getByLabel('Position').nth(1).selectOption('attack')
+  await editableMatch.getByRole('button', { name: 'Save match' }).click()
+  await expect(editableMatch.getByText('Pending match saved.')).toBeVisible()
+
+  const deletedMatch = page.getByRole('form', { name: 'Pending match 2' })
+  page.once('dialog', (dialog) => dialog.accept())
+  await deletedMatch.getByRole('button', { name: 'Delete match' }).click()
+  await expect(page.getByRole('form', { name: 'Pending match 2' })).toBeHidden()
+
   await page.goto(`/${organizationId}/matches/${secondId}`)
-  await expect(page.getByText('Pending · 1v1')).toBeVisible()
+  await expect(page.getByText('Pending · 2v2')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Cancel match' })).toHaveCount(
+    0,
+  )
   await expect(page.getByText('Match not found.')).toBeHidden()
+  await page.goto(`/${organizationId}/matches/${thirdId}`)
+  await expect(page.getByText('Match not found.')).toBeVisible()
   expect(errors).toEqual([])
 })
