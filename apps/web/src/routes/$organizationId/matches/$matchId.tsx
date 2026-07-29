@@ -1,22 +1,22 @@
 import { Link, createFileRoute, useNavigate } from '@tanstack/react-router'
-import { useLiveQuery } from '@tanstack/react-db'
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { ArrowLeft, Minus, Plus, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import { Scoreboard } from '../../../components/scoreboard'
 import { Button } from '../../../components/ui/button'
 import { Card, CardContent } from '../../../components/ui/card'
 import {
+  organizationSnapshotOptions,
   refreshOrganization,
-  updateOrganizationSnapshot,
-} from '../../../collections'
-import { getMatchesCollection } from '../../../collections/matches'
-import type { TeamColor } from '../../../collections/matches'
-import { getPeopleCollection } from '../../../collections/people'
-import { dataStore } from '../../../data/datastore'
+} from '../../../data/queries'
 import { eloHistory } from '../../../domain/elo'
+import type { TeamColor } from '../../../domain/entities'
 import { validateMatch } from '../../../domain/matches'
 import { cn } from '../../../lib/cn'
+import {
+  cancelMatchFn,
+  completeMatchFn,
+} from '../../../server/foosrank.functions'
 
 export const Route = createFileRoute('/$organizationId/matches/$matchId')({
   component: MatchDetail,
@@ -25,10 +25,9 @@ export const Route = createFileRoute('/$organizationId/matches/$matchId')({
 function MatchDetail() {
   const navigate = useNavigate()
   const { organizationId, matchId } = Route.useParams()
-  const people =
-    useLiveQuery(() => getPeopleCollection(organizationId)).data ?? []
-  const matches =
-    useLiveQuery(() => getMatchesCollection(organizationId)).data ?? []
+  const snapshot = useQuery(organizationSnapshotOptions(organizationId)).data
+  const people = snapshot?.people ?? []
+  const matches = snapshot?.matches ?? []
   const match = matches.find(
     (item) => item.id === matchId && item.organizationId === organizationId,
   )
@@ -43,33 +42,19 @@ function MatchDetail() {
         validPersonIds,
       )
       if (scoreError) throw new Error(scoreError)
-      const completed = await dataStore.completeMatch({
-        organizationId,
-        matchId,
-        score,
+      await completeMatchFn({
+        data: { organizationId, matchId, score },
       })
-      updateOrganizationSnapshot(organizationId, (snapshot) => ({
-        ...snapshot,
-        matches: snapshot.matches.map((item) =>
-          item.id === completed.match.id ? completed.match : item,
-        ),
-        people: snapshot.people.map(
-          (person) =>
-            completed.people.find((item) => item.id === person.id) ?? person,
-        ),
-      }))
-      await refreshOrganization(organizationId).catch(() => undefined)
+      await refreshOrganization(organizationId)
     },
   })
   const cancel = useMutation({
     mutationFn: async () => {
       if (match) {
-        await dataStore.cancelMatch({ organizationId, matchId: match.id })
-        updateOrganizationSnapshot(organizationId, (snapshot) => ({
-          ...snapshot,
-          matches: snapshot.matches.filter((item) => item.id !== match.id),
-        }))
-        await refreshOrganization(organizationId).catch(() => undefined)
+        await cancelMatchFn({
+          data: { organizationId, matchId: match.id },
+        })
+        await refreshOrganization(organizationId)
       }
     },
   })

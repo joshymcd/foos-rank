@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { MatchParticipant } from '../collections/matches'
+import type { MatchParticipant } from './entities'
 import { validateMatch } from './matches'
 
 const roster = new Set(['a', 'b', 'c', 'd'])

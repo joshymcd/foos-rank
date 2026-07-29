@@ -1,6 +1,6 @@
 import { QueryClientProvider } from '@tanstack/react-query'
 import type { ReactNode } from 'react'
-import { queryClient } from '../collections'
+import { queryClient } from '../data/queries'
 
 export function TanstackQueryProvider({ children }: { children: ReactNode }) {
   return (

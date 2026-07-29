@@ -1,6 +1,5 @@
 import { Link, createFileRoute, useNavigate } from '@tanstack/react-router'
-import { useLiveQuery } from '@tanstack/react-db'
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { Play } from 'lucide-react'
 import { useRef, useState } from 'react'
 import { Button } from '../../../components/ui/button'
@@ -12,18 +11,16 @@ import {
 } from '../../../components/ui/card'
 import { SegmentedControl } from '../../../components/ui/segmented-control'
 import { Select } from '../../../components/ui/select'
-import {
-  refreshOrganization,
-  updateOrganizationSnapshot,
-} from '../../../collections'
 import type {
   MatchFormat,
   MatchParticipant,
   PlayerRole,
   TeamColor,
-} from '../../../collections/matches'
-import { getPeopleCollection } from '../../../collections/people'
-import { dataStore } from '../../../data/datastore'
+} from '../../../domain/entities'
+import {
+  organizationSnapshotOptions,
+  refreshOrganization,
+} from '../../../data/queries'
 import {
   defaultRoles,
   formats,
@@ -31,6 +28,7 @@ import {
   validateMatch,
 } from '../../../domain/matches'
 import { cn } from '../../../lib/cn'
+import { startMatchFn } from '../../../server/foosrank.functions'
 
 export const Route = createFileRoute('/$organizationId/matches/new')({
   component: NewMatch,
@@ -53,7 +51,7 @@ function NewMatch() {
   const navigate = useNavigate()
   const { organizationId } = Route.useParams()
   const people =
-    useLiveQuery(() => getPeopleCollection(organizationId)).data ?? []
+    useQuery(organizationSnapshotOptions(organizationId)).data?.people ?? []
   const pendingMatchId = useRef<string | null>(null)
   const start = useMutation({
     mutationFn: async ({
@@ -63,19 +61,15 @@ function NewMatch() {
       format: MatchFormat
       participants: MatchParticipant[]
     }) => {
-      const match = await dataStore.startMatch({
-        organizationId,
-        matchId: (pendingMatchId.current ??= crypto.randomUUID()),
-        format,
-        participants,
+      const match = await startMatchFn({
+        data: {
+          organizationId,
+          matchId: (pendingMatchId.current ??= crypto.randomUUID()),
+          format,
+          participants,
+        },
       })
-      updateOrganizationSnapshot(organizationId, (snapshot) => ({
-        ...snapshot,
-        matches: snapshot.matches.some((item) => item.id === match.id)
-          ? snapshot.matches
-          : [...snapshot.matches, match],
-      }))
-      await refreshOrganization(organizationId).catch(() => undefined)
+      await refreshOrganization(organizationId)
       return match.id
     },
   })

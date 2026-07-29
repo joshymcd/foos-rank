@@ -1,13 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { useLiveQuery } from '@tanstack/react-db'
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
-import type { Organization } from '../../collections/organization'
-import {
-  refreshOrganization,
-  refreshRecentOrganizations,
-  updateOrganizationSnapshot,
-} from '../../collections'
 import { Button } from '../../components/ui/button'
 import {
   Card,
@@ -16,8 +9,13 @@ import {
   CardTitle,
 } from '../../components/ui/card'
 import { Input } from '../../components/ui/input'
-import { getOrganizationCollection } from '../../collections/organization'
-import { dataStore } from '../../data/datastore'
+import {
+  organizationSnapshotOptions,
+  refreshOrganization,
+  refreshRecentOrganizations,
+} from '../../data/queries'
+import type { Organization } from '../../domain/entities'
+import { updateOrganizationFn } from '../../server/foosrank.functions'
 
 export const Route = createFileRoute('/$organizationId/admin')({
   component: Admin,
@@ -25,9 +23,8 @@ export const Route = createFileRoute('/$organizationId/admin')({
 
 function Admin() {
   const { organizationId } = Route.useParams()
-  const organization = (
-    useLiveQuery(() => getOrganizationCollection(organizationId)).data ?? []
-  ).find((item) => item.id === organizationId)
+  const organization = useQuery(organizationSnapshotOptions(organizationId))
+    .data?.organization
 
   if (!organization) return null
 
@@ -44,17 +41,12 @@ function OrganizationSettings({
     mutationFn: async (newName: string) => {
       const trimmed = newName.trim()
       if (!trimmed) throw new Error('Enter an organization name.')
-      const updated = await dataStore.updateOrganization({
-        organizationId: organization.id,
-        name: trimmed,
+      await updateOrganizationFn({
+        data: { organizationId: organization.id, name: trimmed },
       })
-      updateOrganizationSnapshot(organization.id, (snapshot) => ({
-        ...snapshot,
-        organization: updated,
-      }))
       await Promise.all([
-        refreshOrganization(organization.id).catch(() => undefined),
-        refreshRecentOrganizations().catch(() => undefined),
+        refreshOrganization(organization.id),
+        refreshRecentOrganizations(),
       ])
     },
   })

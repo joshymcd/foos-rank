@@ -10,7 +10,7 @@ function captureBrowserErrors(page: Page) {
   return errors
 }
 
-const runId = Date.now().toString(36)
+const runId = `${Date.now().toString(36)}-${crypto.randomUUID().slice(0, 8)}`
 
 async function createPendingMatch(
   page: Page,

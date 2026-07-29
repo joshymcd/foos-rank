@@ -6,13 +6,9 @@ import { Button } from '../components/ui/button'
 import { Card } from '../components/ui/card'
 import { Input } from '../components/ui/input'
 import { ThemeToggle } from '../components/ui/theme-toggle'
-import {
-  refreshOrganization,
-  refreshRecentOrganizations,
-  setOrganizationSnapshot,
-} from '../collections'
-import { dataStore } from '../data/datastore'
 import { rememberOrganization } from '../data/recent-organizations'
+import { refreshOrganization } from '../data/queries'
+import { setupOrganizationFn } from '../server/foosrank.functions'
 
 export const Route = createFileRoute('/setup')({
   component: Setup,
@@ -34,17 +30,11 @@ function Setup() {
     }) => {
       if (!name || !playerName || !id)
         throw new Error('Enter an organization name and your name.')
-      const snapshot = await dataStore.setupOrganization({
-        id,
-        name,
-        playerName,
+      await setupOrganizationFn({
+        data: { id, name, playerName },
       })
-      setOrganizationSnapshot(snapshot)
       rememberOrganization(id)
-      await Promise.all([
-        refreshOrganization(id).catch(() => undefined),
-        refreshRecentOrganizations().catch(() => undefined),
-      ])
+      await refreshOrganization(id)
     },
   })
 

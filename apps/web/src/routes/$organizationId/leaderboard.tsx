@@ -1,8 +1,7 @@
 import { Link, createFileRoute } from '@tanstack/react-router'
-import { useLiveQuery } from '@tanstack/react-db'
+import { useQuery } from '@tanstack/react-query'
 import { Card } from '../../components/ui/card'
-import { getMatchesCollection } from '../../collections/matches'
-import { getPeopleCollection } from '../../collections/people'
+import { organizationSnapshotOptions } from '../../data/queries'
 import { leaderboard } from '../../domain/elo'
 
 export const Route = createFileRoute('/$organizationId/leaderboard')({
@@ -11,11 +10,9 @@ export const Route = createFileRoute('/$organizationId/leaderboard')({
 
 function Leaderboard() {
   const { organizationId } = Route.useParams()
-  const people =
-    useLiveQuery(() => getPeopleCollection(organizationId)).data ?? []
-  const matches = (
-    useLiveQuery(() => getMatchesCollection(organizationId)).data ?? []
-  ).filter((match) => match.complete)
+  const snapshot = useQuery(organizationSnapshotOptions(organizationId)).data
+  const people = snapshot?.people ?? []
+  const matches = (snapshot?.matches ?? []).filter((match) => match.complete)
   const ranks = leaderboard(people, matches)
 
   return (

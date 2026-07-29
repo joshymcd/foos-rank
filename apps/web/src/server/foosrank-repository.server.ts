@@ -47,6 +47,12 @@ interface StoredEntity<T> {
   version?: number
 }
 
+interface StoredCounter {
+  pk: string
+  sk: 'COUNTER'
+  value: number
+}
+
 function isTransactionConflict(error: unknown) {
   return (
     error instanceof Error &&
@@ -66,6 +72,20 @@ async function getItem<T>(organizationId: string, sk: string) {
   return result.Item as StoredEntity<T> | undefined
 }
 
+async function getCounter(organizationId: string) {
+  const result = await client.send(
+    new GetCommand({
+      TableName: tableName,
+      Key: { pk: pk(organizationId), sk: 'COUNTER' },
+      ConsistentRead: true,
+    }),
+  )
+  const item = result.Item as StoredCounter | undefined
+  if (!item || typeof item.value !== 'number')
+    throw new Error('Organization sequence counter not found.')
+  return item
+}
+
 function personVersion(item: StoredEntity<Person>) {
   if (typeof item.version !== 'number')
     throw new Error('Player record is invalid.')
@@ -73,14 +93,15 @@ function personVersion(item: StoredEntity<Person>) {
 }
 
 export async function getOrganizations(ids: string[]) {
-  if (ids.length === 0) return []
+  const uniqueIds = [...new Set(ids)]
+  if (uniqueIds.length === 0) return []
   const items: Array<Record<string, unknown>> = []
-  let keys = ids.map((id) => ({ pk: pk(id), sk: 'META' }))
+  let keys = uniqueIds.map((id) => ({ pk: pk(id), sk: 'META' }))
   for (let attempt = 0; keys.length > 0 && attempt < 5; attempt += 1) {
     const result = await client.send(
       new BatchGetCommand({
         RequestItems: {
-          [tableName]: { Keys: keys },
+          [tableName]: { Keys: keys, ConsistentRead: true },
         },
       }),
     )
@@ -96,7 +117,7 @@ export async function getOrganizations(ids: string[]) {
       return parsed.success ? [[parsed.data.id, parsed.data] as const] : []
     }),
   )
-  return ids.flatMap((id) => {
+  return uniqueIds.flatMap((id) => {
     const organization = organizations.get(id)
     return organization ? [organization] : []
   })
@@ -554,10 +575,12 @@ export async function completeMatch(input: {
   score: Score
 }) {
   for (let attempt = 0; attempt < 5; attempt += 1) {
-    const snapshot = await getOrganizationSnapshot(input.organizationId)
-    if (!snapshot) throw new Error('Organization not found.')
-    const match = snapshot.matches.find((item) => item.id === input.matchId)
-    if (!match) throw new Error('Match not found.')
+    const matchItem = await getItem<Match>(
+      input.organizationId,
+      matchSk(input.matchId),
+    )
+    if (!matchItem) throw new Error('Match not found.')
+    const match = matchItem.entity
     if (match.complete) throw new Error('Match is already complete.')
     const personItems = await Promise.all(
       match.participants.map((participant) =>
@@ -572,13 +595,8 @@ export async function completeMatch(input: {
       new Set(people.map((person) => person.id)),
     )
     if (validationError) throw new Error(validationError)
-    const counter = await getItem<never>(input.organizationId, 'COUNTER')
-    if (
-      !counter ||
-      typeof (counter as unknown as { value?: unknown }).value !== 'number'
-    )
-      throw new Error('Organization sequence counter not found.')
-    const currentSequence = (counter as unknown as { value: number }).value
+    const counter = await getCounter(input.organizationId)
+    const currentSequence = counter.value
     const eloChanges = calculateEloChanges(
       { participants: match.participants, score: input.score },
       people,
@@ -624,10 +642,7 @@ export async function completeMatch(input: {
             {
               Put: {
                 TableName: tableName,
-                Item: {
-                  ...currentMatchItem(match, input.organizationId),
-                  entity: completedMatch,
-                },
+                Item: { ...matchItem, entity: completedMatch },
                 ConditionExpression: '#entity.#complete = :false',
                 ExpressionAttributeNames: {
                   '#entity': 'entity',
@@ -669,12 +684,4 @@ export async function completeMatch(input: {
     }
   }
   throw new Error('Match changed while saving. Try again.')
-}
-
-function currentMatchItem(match: Match, organizationId: string) {
-  return {
-    pk: pk(organizationId),
-    sk: matchSk(match.id),
-    entity: match,
-  }
 }

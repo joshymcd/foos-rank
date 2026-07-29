@@ -1,6 +1,6 @@
 # FoosRank
 
-A shared foosball match and Elo tracker built with TanStack Start, TanStack DB, DynamoDB, React, and Tailwind CSS.
+A shared foosball match and Elo tracker built with TanStack Start, TanStack Query, DynamoDB, React, and Tailwind CSS.
 
 ## Development
 
@@ -33,13 +33,12 @@ Install Playwright's Chromium browser before running E2E tests locally:
 pnpm --filter @foos-rank/web exec playwright install chromium
 ```
 
-Playwright exercises the shared datastore. Start `pnpm dev` first, then run `pnpm test:e2e` in another terminal. Alternatively, set `PLAYWRIGHT_BASE_URL` to a disposable deployed stage. CI currently runs unit/static checks and the production build; a DynamoDB Local or disposable-stage job can be added before enabling E2E there.
+Playwright exercises the shared datastore. Start `pnpm dev` first, then run `pnpm test:e2e` in another terminal. Pull requests also run E2E against their deployed preview stage.
 
 ## Structure
 
 ```text
-apps/web/src/collections  Organization-scoped TanStack DB collections
-apps/web/src/data         DynamoDB client and browser recent-organization index
+apps/web/src/data         Query definitions and browser recent-organization index
 apps/web/src/domain       Match and Elo rules
 apps/web/src/server       DynamoDB repository and TanStack Start server functions
 apps/web/src/routes       TanStack Router pages and layouts
@@ -47,8 +46,8 @@ apps/web/src/components   Shared UI
 apps/web/tests/e2e        Playwright workflows
 ```
 
-Route loaders preload DynamoDB-backed collections before rendering. Components use `useLiveQuery`; collections refresh on focus and poll while active so other browsers' changes become visible. Organization setup and match completion are atomic datastore commands.
+Route loaders preload one DynamoDB-backed snapshot per organization. Components use TanStack Query; snapshots refresh on focus and poll while active so other browsers' changes become visible. Organization setup and match completion are atomic server commands.
 
 Production data is retained by SST. Preview-stage data is isolated and removed with its stage.
 
-GitHub Actions runs formatting, linting, type checking, unit tests, and the production build on pushes to `main` and pull requests.
+GitHub Actions runs formatting, linting, type checking, unit tests, and the production build. Pull requests from this repository also deploy an isolated stage and run Playwright against it.

@@ -1,21 +1,20 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import { useLiveQuery } from '@tanstack/react-db'
+import { useQuery } from '@tanstack/react-query'
 import { ChevronRight, Trophy } from 'lucide-react'
 import { Card } from '../components/ui/card'
 import { ThemeToggle } from '../components/ui/theme-toggle'
-import { getRecentOrganizationsCollection } from '../collections/organization'
+import { queryClient, recentOrganizationsOptions } from '../data/queries'
 
 export const Route = createFileRoute('/')({
   loader: async () => {
-    await getRecentOrganizationsCollection().preload()
+    await queryClient.ensureQueryData(recentOrganizationsOptions())
   },
   component: Home,
 })
 
 function Home() {
   const navigate = useNavigate()
-  const organizations =
-    useLiveQuery(() => getRecentOrganizationsCollection()).data ?? []
+  const organizations = useQuery(recentOrganizationsOptions()).data ?? []
 
   return (
     <main className="min-h-screen bg-bg px-4 py-6 sm:px-6 sm:py-10">
