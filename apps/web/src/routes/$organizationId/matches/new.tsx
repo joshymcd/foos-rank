@@ -1,8 +1,7 @@
 import { Link, createFileRoute, useNavigate } from '@tanstack/react-router'
-import { useLiveQuery } from '@tanstack/react-db'
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { Play } from 'lucide-react'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { Button } from '../../../components/ui/button'
 import {
   Card,
@@ -12,14 +11,16 @@ import {
 } from '../../../components/ui/card'
 import { SegmentedControl } from '../../../components/ui/segmented-control'
 import { Select } from '../../../components/ui/select'
-import { matchesCollection } from '../../../collections/matches'
 import type {
   MatchFormat,
   MatchParticipant,
   PlayerRole,
   TeamColor,
-} from '../../../collections/matches'
-import { peopleCollection } from '../../../collections/people'
+} from '../../../domain/entities'
+import {
+  organizationSnapshotOptions,
+  refreshOrganization,
+} from '../../../data/queries'
 import {
   defaultRoles,
   formats,
@@ -27,6 +28,7 @@ import {
   validateMatch,
 } from '../../../domain/matches'
 import { cn } from '../../../lib/cn'
+import { startMatchFn } from '../../../server/foosrank.functions'
 
 export const Route = createFileRoute('/$organizationId/matches/new')({
   component: NewMatch,
@@ -48,9 +50,9 @@ const roleOptions: Array<{ value: PlayerRole; label: string }> = [
 function NewMatch() {
   const navigate = useNavigate()
   const { organizationId } = Route.useParams()
-  const people = (useLiveQuery(() => peopleCollection).data ?? []).filter(
-    (person) => person.organizationId === organizationId,
-  )
+  const people =
+    useQuery(organizationSnapshotOptions(organizationId)).data?.people ?? []
+  const pendingMatchId = useRef<string | null>(null)
   const start = useMutation({
     mutationFn: async ({
       format,
@@ -59,21 +61,16 @@ function NewMatch() {
       format: MatchFormat
       participants: MatchParticipant[]
     }) => {
-      const matchId = crypto.randomUUID()
-      const transaction = matchesCollection.insert({
-        id: matchId,
-        organizationId,
-        format,
-        participants,
-        startedAt: new Date().toISOString(),
-        complete: false,
-        sequence: null,
-        completedAt: null,
-        score: null,
-        eloChanges: null,
+      const match = await startMatchFn({
+        data: {
+          organizationId,
+          matchId: (pendingMatchId.current ??= crypto.randomUUID()),
+          format,
+          participants,
+        },
       })
-      await transaction.isPersisted.promise
-      return matchId
+      await refreshOrganization(organizationId)
+      return match.id
     },
   })
   const [format, setFormat] = useState<MatchFormat>('1v1')
@@ -90,13 +87,16 @@ function NewMatch() {
     undefined,
     validPersonIds,
   )
-  const setPlayer = (index: number, personId: string) =>
+  const setPlayer = (index: number, personId: string) => {
+    pendingMatchId.current = null
     setParticipants((current) =>
       current.map((participant, itemIndex) =>
         itemIndex === index ? { ...participant, personId } : participant,
       ),
     )
+  }
   const setRole = (index: number, role: MatchParticipant['role']) => {
+    pendingMatchId.current = null
     setParticipants((current) => {
       const selected = current[index]
       if (role === 'both')
@@ -139,6 +139,7 @@ function NewMatch() {
                 type="button"
                 aria-pressed={selected}
                 onClick={() => {
+                  pendingMatchId.current = null
                   setFormat(item.value)
                   setParticipants(createParticipants(item.value))
                   setAttemptedStart(false)

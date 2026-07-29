@@ -1,5 +1,4 @@
-import type { Match, TeamColor } from '../collections/matches'
-import type { Person } from '../collections/people'
+import type { Match, Person, TeamColor } from '../domain/entities'
 
 function teamNames(
   match: Pick<Match, 'participants'>,

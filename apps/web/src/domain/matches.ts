@@ -3,7 +3,7 @@ import type {
   MatchParticipant,
   PlayerRole,
   TeamColor,
-} from '../collections/matches'
+} from './entities'
 
 export const formats: Array<{
   value: MatchFormat

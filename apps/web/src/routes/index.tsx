@@ -1,20 +1,49 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import { useLiveQuery } from '@tanstack/react-db'
+import { useQuery } from '@tanstack/react-query'
 import { ChevronRight, Trophy } from 'lucide-react'
+import { useState } from 'react'
+import { Button } from '../components/ui/button'
 import { Card } from '../components/ui/card'
+import { Input } from '../components/ui/input'
 import { ThemeToggle } from '../components/ui/theme-toggle'
-import { organizationsCollection } from '../collections/organization'
+import { queryClient, recentOrganizationsOptions } from '../data/queries'
+import { organizationIdSchema } from '../domain/entities'
 
 export const Route = createFileRoute('/')({
   loader: async () => {
-    await organizationsCollection.preload()
+    await queryClient.ensureQueryData(recentOrganizationsOptions())
   },
   component: Home,
 })
 
 function Home() {
   const navigate = useNavigate()
-  const organizations = useLiveQuery(() => organizationsCollection).data ?? []
+  const organizations = useQuery(recentOrganizationsOptions()).data ?? []
+  const [organizationLocation, setOrganizationLocation] = useState('')
+  const [error, setError] = useState('')
+
+  const openOrganization = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    const value = organizationLocation.trim()
+    let organizationId = value
+    try {
+      if (value.includes('/')) {
+        const url = new URL(value, window.location.origin)
+        organizationId = url.pathname.split('/').filter(Boolean)[0] ?? ''
+      }
+    } catch {
+      organizationId = ''
+    }
+    const parsed = organizationIdSchema.safeParse(organizationId)
+    if (!parsed.success) {
+      setError('Enter a valid organization ID or URL.')
+      return
+    }
+    void navigate({
+      to: '/$organizationId',
+      params: { organizationId: parsed.data },
+    })
+  }
 
   return (
     <main className="min-h-screen bg-bg px-4 py-6 sm:px-6 sm:py-10">
@@ -28,17 +57,48 @@ function Home() {
               <p className="font-display text-lg font-bold tracking-tight">
                 FoosRank
               </p>
-              <p className="text-xs text-muted">Local foosball tracking</p>
+              <p className="text-xs text-muted">Shared foosball tracking</p>
             </div>
           </div>
           <ThemeToggle />
         </header>
 
         <Card className="p-5">
-          <section>
+          <section className="border-b border-border pb-5">
             <h1 className="font-display text-xl font-bold">
-              Your organizations
+              Open an organization
             </h1>
+            <p className="mt-1 text-sm text-muted">
+              Enter its ID or paste an organization URL.
+            </p>
+            <form onSubmit={openOrganization} className="mt-4 flex gap-2">
+              <label className="sr-only" htmlFor="organization-location">
+                Organization ID or URL
+              </label>
+              <Input
+                id="organization-location"
+                value={organizationLocation}
+                onChange={(event) => {
+                  setOrganizationLocation(event.target.value)
+                  setError('')
+                }}
+                placeholder="acme-ltd or organization URL"
+                className="min-w-0 flex-1"
+                required
+              />
+              <Button type="submit">Open</Button>
+            </form>
+            {error && (
+              <p role="alert" className="mt-2 text-sm text-danger">
+                {error}
+              </p>
+            )}
+          </section>
+
+          <section className="pt-5">
+            <h2 className="font-display text-lg font-bold">
+              Your organizations
+            </h2>
             {organizations.length > 0 ? (
               <div className="mt-3 divide-y divide-border">
                 {organizations.map((organization) => (
@@ -60,7 +120,7 @@ function Home() {
               </div>
             ) : (
               <p className="mt-3 text-sm text-muted">
-                No organizations are stored in this browser.
+                No recently visited organizations in this browser.
               </p>
             )}
           </section>

@@ -1,16 +1,21 @@
 import { Link, createFileRoute } from '@tanstack/react-router'
-import { useLiveQuery } from '@tanstack/react-db'
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { Check, Pencil, Trash2, UserPlus, X } from 'lucide-react'
 import { useState } from 'react'
 import { Avatar } from '../../../components/ui/avatar'
 import { Button } from '../../../components/ui/button'
 import { Card } from '../../../components/ui/card'
 import { Input } from '../../../components/ui/input'
-import { matchesCollection } from '../../../collections/matches'
-import { peopleCollection } from '../../../collections/people'
-import type { Person } from '../../../collections/people'
-import { INITIAL_ELO } from '../../../domain/elo'
+import {
+  organizationSnapshotOptions,
+  refreshOrganization,
+} from '../../../data/queries'
+import type { Person } from '../../../domain/entities'
+import {
+  addPersonFn,
+  deletePersonFn,
+  renamePersonFn,
+} from '../../../server/foosrank.functions'
 
 export const Route = createFileRoute('/$organizationId/people/')({
   component: People,
@@ -18,25 +23,19 @@ export const Route = createFileRoute('/$organizationId/people/')({
 
 function People() {
   const { organizationId } = Route.useParams()
-  const people = (useLiveQuery(() => peopleCollection).data ?? [])
-    .filter((person) => person.organizationId === organizationId)
-    .sort((a, b) => a.name.localeCompare(b.name))
-  const matches = (useLiveQuery(() => matchesCollection).data ?? []).filter(
-    (match) => match.organizationId === organizationId,
+  const snapshot = useQuery(organizationSnapshotOptions(organizationId)).data
+  const people = [...(snapshot?.people ?? [])].sort((a, b) =>
+    a.name.localeCompare(b.name),
   )
+  const matches = snapshot?.matches ?? []
   const add = useMutation({
     mutationFn: async (playerName: string) => {
       const trimmed = playerName.trim()
       if (!trimmed) throw new Error('Enter a player name.')
-      const person = peopleCollection.insert({
-        id: crypto.randomUUID(),
-        organizationId,
-        name: trimmed,
-        normalizedName: trimmed.toLowerCase(),
-        elo: INITIAL_ELO,
-        createdAt: new Date().toISOString(),
+      await addPersonFn({
+        data: { organizationId, name: trimmed },
       })
-      await person.isPersisted.promise
+      await refreshOrganization(organizationId)
     },
   })
   const [name, setName] = useState('')
@@ -119,17 +118,19 @@ function RosterRow({
     mutationFn: async (newName: string) => {
       const trimmed = newName.trim()
       if (!trimmed) throw new Error('Enter a player name.')
-      const transaction = peopleCollection.update(person.id, (draft) => {
-        draft.name = trimmed
-        draft.normalizedName = trimmed.toLowerCase()
+      await renamePersonFn({
+        data: { organizationId, personId: person.id, name: trimmed },
       })
-      await transaction.isPersisted.promise
+      await refreshOrganization(organizationId)
     },
     onSuccess: () => setEditing(false),
   })
   const remove = useMutation({
     mutationFn: async () => {
-      await peopleCollection.delete(person.id).isPersisted.promise
+      await deletePersonFn({
+        data: { organizationId, personId: person.id },
+      })
+      await refreshOrganization(organizationId)
     },
   })
 

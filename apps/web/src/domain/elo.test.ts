@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { MatchParticipant } from '../collections/matches'
+import type { MatchParticipant } from './entities'
 import { calculateEloChanges } from './elo'
 
 const people = ['a', 'b', 'c', 'd'].map((id) => ({ id, elo: 1000 }))

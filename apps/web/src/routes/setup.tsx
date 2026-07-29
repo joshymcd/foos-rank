@@ -1,5 +1,4 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import { useLiveQuery } from '@tanstack/react-db'
 import { useMutation } from '@tanstack/react-query'
 import { Trophy } from 'lucide-react'
 import { useState } from 'react'
@@ -7,23 +6,16 @@ import { Button } from '../components/ui/button'
 import { Card } from '../components/ui/card'
 import { Input } from '../components/ui/input'
 import { ThemeToggle } from '../components/ui/theme-toggle'
-import { organizationsCollection } from '../collections/organization'
-import { peopleCollection } from '../collections/people'
-import { INITIAL_ELO } from '../domain/elo'
+import { rememberOrganization } from '../data/recent-organizations'
+import { refreshOrganization } from '../data/queries'
+import { setupOrganizationFn } from '../server/foosrank.functions'
 
 export const Route = createFileRoute('/setup')({
-  loader: async () => {
-    await Promise.all([
-      organizationsCollection.preload(),
-      peopleCollection.preload(),
-    ])
-  },
   component: Setup,
 })
 
 function Setup() {
   const navigate = useNavigate()
-  const organizations = useLiveQuery(() => organizationsCollection).data ?? []
   const [organizationName, setOrganizationName] = useState('')
   const [personName, setPersonName] = useState('')
   const createOrganization = useMutation({
@@ -38,31 +30,11 @@ function Setup() {
     }) => {
       if (!name || !playerName || !id)
         throw new Error('Enter an organization name and your name.')
-      if (organizations.some((organization) => organization.id === id))
-        throw new Error('An organization with that name already exists.')
-
-      const personId = crypto.randomUUID()
-      const person = peopleCollection.insert({
-        id: personId,
-        organizationId: id,
-        name: playerName,
-        normalizedName: playerName.toLowerCase(),
-        elo: INITIAL_ELO,
-        createdAt: new Date().toISOString(),
+      await setupOrganizationFn({
+        data: { id, name, playerName },
       })
-      await person.isPersisted.promise
-
-      try {
-        const organization = organizationsCollection.insert({
-          id,
-          name,
-          createdAt: new Date().toISOString(),
-        })
-        await organization.isPersisted.promise
-      } catch (error) {
-        await peopleCollection.delete(personId).isPersisted.promise
-        throw error
-      }
+      rememberOrganization(id)
+      await refreshOrganization(id)
     },
   })
 
@@ -106,7 +78,8 @@ function Setup() {
             Create your organization
           </h1>
           <p className="mt-1 text-sm text-muted">
-            Data is stored in this browser.
+            Anyone with the organization URL can view and update its shared
+            data.
           </p>
           <form onSubmit={submit} className="mt-5 space-y-4">
             <label className="block text-sm font-medium">

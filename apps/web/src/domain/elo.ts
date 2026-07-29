@@ -1,5 +1,4 @@
-import type { EloChange, Match, TeamColor } from '../collections/matches'
-import type { Person } from '../collections/people'
+import type { EloChange, Match, Person, TeamColor } from './entities'
 
 export const INITIAL_ELO = 1000
 const K_FACTOR = 32

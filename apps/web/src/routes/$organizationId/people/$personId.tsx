@@ -1,5 +1,5 @@
 import { Link, createFileRoute } from '@tanstack/react-router'
-import { useLiveQuery } from '@tanstack/react-db'
+import { useQuery } from '@tanstack/react-query'
 import { ArrowLeft } from 'lucide-react'
 import { Scoreboard } from '../../../components/scoreboard'
 import { Avatar } from '../../../components/ui/avatar'
@@ -11,8 +11,7 @@ import {
   CardTitle,
 } from '../../../components/ui/card'
 import { EmptyState } from '../../../components/ui/empty-state'
-import { matchesCollection } from '../../../collections/matches'
-import { peopleCollection } from '../../../collections/people'
+import { organizationSnapshotOptions } from '../../../data/queries'
 import { headToHead, leaderboard } from '../../../domain/elo'
 
 export const Route = createFileRoute('/$organizationId/people/$personId')({
@@ -21,12 +20,9 @@ export const Route = createFileRoute('/$organizationId/people/$personId')({
 
 function PlayerProfile() {
   const { organizationId, personId } = Route.useParams()
-  const people = (useLiveQuery(() => peopleCollection).data ?? []).filter(
-    (person) => person.organizationId === organizationId,
-  )
-  const matches = (useLiveQuery(() => matchesCollection).data ?? []).filter(
-    (match) => match.organizationId === organizationId && match.complete,
-  )
+  const snapshot = useQuery(organizationSnapshotOptions(organizationId)).data
+  const people = snapshot?.people ?? []
+  const matches = (snapshot?.matches ?? []).filter((match) => match.complete)
   const person = leaderboard(people, matches).find(
     (item) => item.id === personId,
   )

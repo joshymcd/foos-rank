@@ -1,8 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { useLiveQuery } from '@tanstack/react-db'
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
-import type { Organization } from '../../collections/organization'
 import { Button } from '../../components/ui/button'
 import {
   Card,
@@ -11,7 +9,13 @@ import {
   CardTitle,
 } from '../../components/ui/card'
 import { Input } from '../../components/ui/input'
-import { organizationsCollection } from '../../collections/organization'
+import {
+  organizationSnapshotOptions,
+  refreshOrganization,
+  refreshRecentOrganizations,
+} from '../../data/queries'
+import type { Organization } from '../../domain/entities'
+import { updateOrganizationFn } from '../../server/foosrank.functions'
 
 export const Route = createFileRoute('/$organizationId/admin')({
   component: Admin,
@@ -19,9 +23,8 @@ export const Route = createFileRoute('/$organizationId/admin')({
 
 function Admin() {
   const { organizationId } = Route.useParams()
-  const organization = (
-    useLiveQuery(() => organizationsCollection).data ?? []
-  ).find((item) => item.id === organizationId)
+  const organization = useQuery(organizationSnapshotOptions(organizationId))
+    .data?.organization
 
   if (!organization) return null
 
@@ -38,13 +41,13 @@ function OrganizationSettings({
     mutationFn: async (newName: string) => {
       const trimmed = newName.trim()
       if (!trimmed) throw new Error('Enter an organization name.')
-      const transaction = organizationsCollection.update(
-        organization.id,
-        (draft) => {
-          draft.name = trimmed
-        },
-      )
-      await transaction.isPersisted.promise
+      await updateOrganizationFn({
+        data: { organizationId: organization.id, name: trimmed },
+      })
+      await Promise.all([
+        refreshOrganization(organization.id),
+        refreshRecentOrganizations(),
+      ])
     },
   })
 

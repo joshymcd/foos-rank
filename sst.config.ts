@@ -10,6 +10,14 @@ export default $config({
     };
   },
   async run() {
+    const data = new sst.aws.Dynamo("FoosRankData", {
+      fields: {
+        pk: "string",
+        sk: "string",
+      },
+      primaryIndex: { hashKey: "pk", rangeKey: "sk" },
+    });
+
     const domain =
       $app.stage === "production"
         ? "foosball.joshmc.dev"
@@ -18,10 +26,12 @@ export default $config({
     const webapp = new sst.aws.TanStackStart("MyWeb", {
       path: "apps/web/",
       domain,
+      link: [data],
     });
 
     return {
       webapp,
+      data,
     };
   },
 });

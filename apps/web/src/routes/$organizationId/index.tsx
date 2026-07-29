@@ -1,5 +1,5 @@
 import { Link, createFileRoute } from '@tanstack/react-router'
-import { useLiveQuery } from '@tanstack/react-db'
+import { useQuery } from '@tanstack/react-query'
 import { ArrowRight } from 'lucide-react'
 import { Scoreboard } from '../../components/scoreboard'
 import {
@@ -8,9 +8,7 @@ import {
   CardHeader,
   CardTitle,
 } from '../../components/ui/card'
-import { organizationsCollection } from '../../collections/organization'
-import { matchesCollection } from '../../collections/matches'
-import { peopleCollection } from '../../collections/people'
+import { organizationSnapshotOptions } from '../../data/queries'
 import { leaderboard } from '../../domain/elo'
 
 export const Route = createFileRoute('/$organizationId/')({
@@ -19,15 +17,10 @@ export const Route = createFileRoute('/$organizationId/')({
 
 function Overview() {
   const { organizationId } = Route.useParams()
-  const organization = (
-    useLiveQuery(() => organizationsCollection).data ?? []
-  ).find((item) => item.id === organizationId)
-  const people = (useLiveQuery(() => peopleCollection).data ?? []).filter(
-    (person) => person.organizationId === organizationId,
-  )
-  const allMatches = (useLiveQuery(() => matchesCollection).data ?? []).filter(
-    (match) => match.organizationId === organizationId,
-  )
+  const snapshot = useQuery(organizationSnapshotOptions(organizationId)).data
+  const organization = snapshot?.organization
+  const people = snapshot?.people ?? []
+  const allMatches = snapshot?.matches ?? []
   const completedMatches = allMatches
     .filter((match) => match.complete)
     .sort((a, b) => (b.sequence ?? 0) - (a.sequence ?? 0))

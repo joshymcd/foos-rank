@@ -1,6 +1,6 @@
 # FoosRank
 
-A local-first foosball match and Elo tracker built with TanStack Start, TanStack DB, React, and Tailwind CSS.
+A shared foosball match and Elo tracker built with TanStack Start, TanStack Query, DynamoDB, React, and Tailwind CSS.
 
 ## Development
 
@@ -10,7 +10,9 @@ pnpm install
 pnpm dev
 ```
 
-The web app runs at `http://localhost:3000`. Organizations, players, and matches are stored in browser localStorage.
+The web app runs at `http://localhost:3000`. DynamoDB is the default datastore, and SST creates an isolated table for each stage. Organizations are unlisted and unauthenticated: anyone with an organization URL can view and update its data.
+
+The home page stores only a list of recently visited organization IDs in the browser; all organization, player, and match data remains in DynamoDB. The app does not enumerate the table.
 
 ## Commands
 
@@ -31,16 +33,21 @@ Install Playwright's Chromium browser before running E2E tests locally:
 pnpm --filter @foos-rank/web exec playwright install chromium
 ```
 
+Playwright exercises the shared datastore. Start `pnpm dev` first, then run `pnpm test:e2e` in another terminal. Pull requests also run E2E against their deployed preview stage.
+
 ## Structure
 
 ```text
-apps/web/src/collections  TanStack DB collections and persistence
+apps/web/src/data         Query definitions and browser recent-organization index
 apps/web/src/domain       Match and Elo rules
+apps/web/src/server       DynamoDB repository and TanStack Start server functions
 apps/web/src/routes       TanStack Router pages and layouts
 apps/web/src/components   Shared UI
 apps/web/tests/e2e        Playwright workflows
 ```
 
-Route loaders preload the local collections before rendering. Components continue to use `useLiveQuery` so mutations update the UI reactively.
+Route loaders preload one DynamoDB-backed snapshot per organization. Components use TanStack Query; snapshots refresh on focus and poll while active so other browsers' changes become visible. Organization setup and match completion are atomic server commands.
 
-GitHub Actions runs formatting, linting, type checking, unit tests, the production build, and Playwright tests on pushes to `main` and pull requests.
+Production data is retained by SST. Preview-stage data is isolated and removed with its stage.
+
+GitHub Actions runs formatting, linting, type checking, unit tests, and the production build. Pull requests from this repository also deploy an isolated stage and run Playwright against it.
