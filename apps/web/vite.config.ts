@@ -16,6 +16,12 @@ const config = defineConfig({
     tanstackStart(),
     viteReact(),
   ],
+  nitro: {
+    preset: 'aws-lambda',
+    awsLambda: {
+      streaming: false
+    }
+  }
 })
 
 export default config
