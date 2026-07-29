@@ -1,12 +1,12 @@
-import { defineConfig } from 'vite'
-import { devtools } from '@tanstack/devtools-vite'
+import { defineConfig } from "vite";
+import { devtools } from "@tanstack/devtools-vite";
 
-import { tanstackStart } from '@tanstack/react-start/plugin/vite'
+import { tanstackStart } from "@tanstack/react-start/plugin/vite";
 
-import viteReact from '@vitejs/plugin-react'
+import viteReact from "@vitejs/plugin-react";
 
-import tailwindcss from '@tailwindcss/vite'
-import { nitro } from 'nitro/vite'
+import tailwindcss from "@tailwindcss/vite";
+import { nitro } from "nitro/vite";
 
 const config = defineConfig({
   plugins: [
@@ -17,11 +17,11 @@ const config = defineConfig({
     viteReact(),
   ],
   nitro: {
-    preset: 'aws-lambda',
+    preset: "aws-lambda",
     awsLambda: {
-      streaming: false
+      streaming: false,
     },
   },
-})
+});
 
-export default config
+export default config;
