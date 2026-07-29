@@ -2,9 +2,9 @@ import { Link, createFileRoute } from '@tanstack/react-router'
 import { useLiveQuery } from '@tanstack/react-db'
 import { Scoreboard } from '../../../components/scoreboard'
 import { Card } from '../../../components/ui/card'
-import { matchesCollection } from '../../../collections/matches'
+import { getMatchesCollection } from '../../../collections/matches'
 import type { Match } from '../../../collections/matches'
-import { peopleCollection } from '../../../collections/people'
+import { getPeopleCollection } from '../../../collections/people'
 import type { Person } from '../../../collections/people'
 
 export const Route = createFileRoute('/$organizationId/matches/')({
@@ -13,12 +13,10 @@ export const Route = createFileRoute('/$organizationId/matches/')({
 
 function Matches() {
   const { organizationId } = Route.useParams()
-  const people = (useLiveQuery(() => peopleCollection).data ?? []).filter(
-    (person) => person.organizationId === organizationId,
-  )
-  const matches = (useLiveQuery(() => matchesCollection).data ?? []).filter(
-    (match) => match.organizationId === organizationId,
-  )
+  const people =
+    useLiveQuery(() => getPeopleCollection(organizationId)).data ?? []
+  const matches =
+    useLiveQuery(() => getMatchesCollection(organizationId)).data ?? []
   const pendingMatches = matches
     .filter((match) => !match.complete)
     .sort(

@@ -2,7 +2,7 @@ import { Link, createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useLiveQuery } from '@tanstack/react-db'
 import { useMutation } from '@tanstack/react-query'
 import { Play } from 'lucide-react'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { Button } from '../../../components/ui/button'
 import {
   Card,
@@ -12,14 +12,18 @@ import {
 } from '../../../components/ui/card'
 import { SegmentedControl } from '../../../components/ui/segmented-control'
 import { Select } from '../../../components/ui/select'
-import { matchesCollection } from '../../../collections/matches'
+import {
+  refreshOrganization,
+  updateOrganizationSnapshot,
+} from '../../../collections'
 import type {
   MatchFormat,
   MatchParticipant,
   PlayerRole,
   TeamColor,
 } from '../../../collections/matches'
-import { peopleCollection } from '../../../collections/people'
+import { getPeopleCollection } from '../../../collections/people'
+import { dataStore } from '../../../data/datastore'
 import {
   defaultRoles,
   formats,
@@ -48,9 +52,9 @@ const roleOptions: Array<{ value: PlayerRole; label: string }> = [
 function NewMatch() {
   const navigate = useNavigate()
   const { organizationId } = Route.useParams()
-  const people = (useLiveQuery(() => peopleCollection).data ?? []).filter(
-    (person) => person.organizationId === organizationId,
-  )
+  const people =
+    useLiveQuery(() => getPeopleCollection(organizationId)).data ?? []
+  const pendingMatchId = useRef<string | null>(null)
   const start = useMutation({
     mutationFn: async ({
       format,
@@ -59,21 +63,20 @@ function NewMatch() {
       format: MatchFormat
       participants: MatchParticipant[]
     }) => {
-      const matchId = crypto.randomUUID()
-      const transaction = matchesCollection.insert({
-        id: matchId,
+      const match = await dataStore.startMatch({
         organizationId,
+        matchId: (pendingMatchId.current ??= crypto.randomUUID()),
         format,
         participants,
-        startedAt: new Date().toISOString(),
-        complete: false,
-        sequence: null,
-        completedAt: null,
-        score: null,
-        eloChanges: null,
       })
-      await transaction.isPersisted.promise
-      return matchId
+      updateOrganizationSnapshot(organizationId, (snapshot) => ({
+        ...snapshot,
+        matches: snapshot.matches.some((item) => item.id === match.id)
+          ? snapshot.matches
+          : [...snapshot.matches, match],
+      }))
+      await refreshOrganization(organizationId).catch(() => undefined)
+      return match.id
     },
   })
   const [format, setFormat] = useState<MatchFormat>('1v1')
@@ -90,13 +93,16 @@ function NewMatch() {
     undefined,
     validPersonIds,
   )
-  const setPlayer = (index: number, personId: string) =>
+  const setPlayer = (index: number, personId: string) => {
+    pendingMatchId.current = null
     setParticipants((current) =>
       current.map((participant, itemIndex) =>
         itemIndex === index ? { ...participant, personId } : participant,
       ),
     )
+  }
   const setRole = (index: number, role: MatchParticipant['role']) => {
+    pendingMatchId.current = null
     setParticipants((current) => {
       const selected = current[index]
       if (role === 'both')
@@ -139,6 +145,7 @@ function NewMatch() {
                 type="button"
                 aria-pressed={selected}
                 onClick={() => {
+                  pendingMatchId.current = null
                   setFormat(item.value)
                   setParticipants(createParticipants(item.value))
                   setAttemptedStart(false)

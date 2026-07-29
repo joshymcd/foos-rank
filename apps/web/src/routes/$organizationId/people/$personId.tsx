@@ -11,8 +11,8 @@ import {
   CardTitle,
 } from '../../../components/ui/card'
 import { EmptyState } from '../../../components/ui/empty-state'
-import { matchesCollection } from '../../../collections/matches'
-import { peopleCollection } from '../../../collections/people'
+import { getMatchesCollection } from '../../../collections/matches'
+import { getPeopleCollection } from '../../../collections/people'
 import { headToHead, leaderboard } from '../../../domain/elo'
 
 export const Route = createFileRoute('/$organizationId/people/$personId')({
@@ -21,12 +21,11 @@ export const Route = createFileRoute('/$organizationId/people/$personId')({
 
 function PlayerProfile() {
   const { organizationId, personId } = Route.useParams()
-  const people = (useLiveQuery(() => peopleCollection).data ?? []).filter(
-    (person) => person.organizationId === organizationId,
-  )
-  const matches = (useLiveQuery(() => matchesCollection).data ?? []).filter(
-    (match) => match.organizationId === organizationId && match.complete,
-  )
+  const people =
+    useLiveQuery(() => getPeopleCollection(organizationId)).data ?? []
+  const matches = (
+    useLiveQuery(() => getMatchesCollection(organizationId)).data ?? []
+  ).filter((match) => match.complete)
   const person = leaderboard(people, matches).find(
     (item) => item.id === personId,
   )

@@ -3,6 +3,11 @@ import { useLiveQuery } from '@tanstack/react-db'
 import { useMutation } from '@tanstack/react-query'
 import { useState } from 'react'
 import type { Organization } from '../../collections/organization'
+import {
+  refreshOrganization,
+  refreshRecentOrganizations,
+  updateOrganizationSnapshot,
+} from '../../collections'
 import { Button } from '../../components/ui/button'
 import {
   Card,
@@ -11,7 +16,8 @@ import {
   CardTitle,
 } from '../../components/ui/card'
 import { Input } from '../../components/ui/input'
-import { organizationsCollection } from '../../collections/organization'
+import { getOrganizationCollection } from '../../collections/organization'
+import { dataStore } from '../../data/datastore'
 
 export const Route = createFileRoute('/$organizationId/admin')({
   component: Admin,
@@ -20,7 +26,7 @@ export const Route = createFileRoute('/$organizationId/admin')({
 function Admin() {
   const { organizationId } = Route.useParams()
   const organization = (
-    useLiveQuery(() => organizationsCollection).data ?? []
+    useLiveQuery(() => getOrganizationCollection(organizationId)).data ?? []
   ).find((item) => item.id === organizationId)
 
   if (!organization) return null
@@ -38,13 +44,18 @@ function OrganizationSettings({
     mutationFn: async (newName: string) => {
       const trimmed = newName.trim()
       if (!trimmed) throw new Error('Enter an organization name.')
-      const transaction = organizationsCollection.update(
-        organization.id,
-        (draft) => {
-          draft.name = trimmed
-        },
-      )
-      await transaction.isPersisted.promise
+      const updated = await dataStore.updateOrganization({
+        organizationId: organization.id,
+        name: trimmed,
+      })
+      updateOrganizationSnapshot(organization.id, (snapshot) => ({
+        ...snapshot,
+        organization: updated,
+      }))
+      await Promise.all([
+        refreshOrganization(organization.id).catch(() => undefined),
+        refreshRecentOrganizations().catch(() => undefined),
+      ])
     },
   })
 

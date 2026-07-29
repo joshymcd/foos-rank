@@ -1,18 +1,6 @@
 import { Link } from '@tanstack/react-router'
-import { useMutation } from '@tanstack/react-query'
-import {
-  LayoutDashboard,
-  Plus,
-  Swords,
-  Trash2,
-  Trophy,
-  Users,
-} from 'lucide-react'
+import { LayoutDashboard, Plus, Swords, Trophy, Users } from 'lucide-react'
 import type { ReactNode } from 'react'
-import { resetMatches } from '../collections/matches'
-import { resetOrganization } from '../collections/organization'
-import { resetPeople } from '../collections/people'
-import { queryClient } from '../collections'
 import { cn } from '../lib/cn'
 import { EmptyState } from './ui/empty-state'
 import { ThemeToggle } from './ui/theme-toggle'
@@ -66,19 +54,6 @@ export function AppShell({
   organizationId: string
   organizationName: string
 }) {
-  const reset = useMutation({
-    mutationFn: async () => {
-      await resetMatches()
-      await resetOrganization()
-      await resetPeople()
-      await queryClient.invalidateQueries({ queryKey: ['foosrank'] })
-    },
-  })
-  const confirmReset = () => {
-    if (window.confirm('Delete all locally stored FoosRank data?'))
-      reset.mutate()
-  }
-
   const sidebarLink =
     'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-muted transition-colors hover:bg-surface hover:text-text'
   const sidebarLinkActive =
@@ -122,17 +97,7 @@ export function AppShell({
             <Plus className="size-4" aria-hidden />
             Start match
           </Link>
-          <div className="flex items-center justify-between">
-            <ThemeToggle />
-            <button
-              type="button"
-              onClick={confirmReset}
-              className="inline-flex h-8 items-center gap-1.5 rounded-lg px-3 text-xs font-semibold text-faint transition-colors hover:bg-surface hover:text-danger"
-            >
-              <Trash2 className="size-3.5" aria-hidden />
-              Delete data
-            </button>
-          </div>
+          <ThemeToggle />
         </div>
       </aside>
 

@@ -1,58 +1,72 @@
 import { createCollection } from '@tanstack/db'
 import { queryCollectionOptions } from '@tanstack/query-db-collection'
-import { z } from 'zod'
-import { readStoredArray, updateStoredArray } from '../lib/local-storage'
-import { queryClient } from './index'
+import { dataStore } from '../data/datastore'
+import {
+  getRecentOrganizationIds,
+  setRecentOrganizationIds,
+} from '../data/recent-organizations'
+import { organizationSchema } from '../domain/entities'
+import {
+  organizationQueryKey,
+  queryClient,
+  recentOrganizationsQueryKey,
+} from './index'
 
-const organizationSchema = z.object({
-  id: z.string(),
-  name: z.string(),
-  createdAt: z.string(),
-})
+export type { Organization } from '../domain/entities'
 
-export type Organization = z.infer<typeof organizationSchema>
+let recentCollection:
+  ReturnType<typeof createRecentOrganizationCollection> | undefined
+const organizationCollections = new Map<
+  string,
+  ReturnType<typeof createRecentOrganizationCollection>
+>()
 
-const storageKey = 'foosrank-organizations'
+const refreshOptions = {
+  staleTime: 5_000,
+  refetchInterval: 10_000,
+  refetchOnWindowFocus: true,
+  refetchOnReconnect: true,
+} as const
 
-async function listOrganizations(): Promise<Organization[]> {
-  return readStoredArray<Organization>(storageKey)
+function createRecentOrganizationCollection() {
+  return createCollection(
+    queryCollectionOptions({
+      queryKey: recentOrganizationsQueryKey(),
+      queryFn: async () => {
+        const ids = getRecentOrganizationIds()
+        const organizations = await dataStore.getOrganizations(ids)
+        const validIds = organizations.map((organization) => organization.id)
+        if (validIds.length !== ids.length) setRecentOrganizationIds(validIds)
+        return organizations
+      },
+      queryClient,
+      schema: organizationSchema,
+      getKey: (organization) => organization.id,
+      ...refreshOptions,
+    }),
+  )
 }
 
-export function resetOrganization() {
-  window.localStorage.removeItem(storageKey)
+export function getRecentOrganizationsCollection() {
+  recentCollection ??= createRecentOrganizationCollection()
+  return recentCollection
 }
 
-export const organizationsCollection = createCollection(
-  queryCollectionOptions({
-    queryKey: ['foosrank', 'organizations'],
-    queryFn: listOrganizations,
-    queryClient,
-    schema: organizationSchema,
-    getKey: (organization) => organization.id,
-    onInsert: async ({ transaction }) => {
-      updateStoredArray<Organization>(storageKey, (organizations) => {
-        const next = [...organizations]
-        for (const mutation of transaction.mutations) {
-          if (next.some((item) => item.id === mutation.modified.id))
-            throw new Error('An organization with that ID already exists.')
-          next.push(mutation.modified)
-        }
-        return next
-      })
-    },
-    onUpdate: async ({ transaction }) => {
-      updateStoredArray<Organization>(storageKey, (organizations) => {
-        const next = [...organizations]
-        for (const mutation of transaction.mutations) {
-          const organization = mutation.modified
-          const index = next.findIndex((item) => item.id === organization.id)
-          if (index < 0) throw new Error('Organization not found.')
-          if (!organization.name.trim())
-            throw new Error('Enter an organization name.')
-          next[index] = organization
-        }
-        return next
-      })
-    },
-  }),
-)
+export function getOrganizationCollection(organizationId: string) {
+  let collection = organizationCollections.get(organizationId)
+  if (!collection) {
+    collection = createCollection(
+      queryCollectionOptions({
+        queryKey: organizationQueryKey(organizationId),
+        queryFn: () => dataStore.getOrganizationSnapshot(organizationId),
+        select: (snapshot) => (snapshot ? [snapshot.organization] : []),
+        queryClient,
+        schema: organizationSchema,
+        getKey: (organization) => organization.id,
+        ...refreshOptions,
+      }),
+    )
+    organizationCollections.set(organizationId, collection)
+  }
+  return collection
+}

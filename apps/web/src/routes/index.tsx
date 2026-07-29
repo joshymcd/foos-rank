@@ -3,18 +3,19 @@ import { useLiveQuery } from '@tanstack/react-db'
 import { ChevronRight, Trophy } from 'lucide-react'
 import { Card } from '../components/ui/card'
 import { ThemeToggle } from '../components/ui/theme-toggle'
-import { organizationsCollection } from '../collections/organization'
+import { getRecentOrganizationsCollection } from '../collections/organization'
 
 export const Route = createFileRoute('/')({
   loader: async () => {
-    await organizationsCollection.preload()
+    await getRecentOrganizationsCollection().preload()
   },
   component: Home,
 })
 
 function Home() {
   const navigate = useNavigate()
-  const organizations = useLiveQuery(() => organizationsCollection).data ?? []
+  const organizations =
+    useLiveQuery(() => getRecentOrganizationsCollection()).data ?? []
 
   return (
     <main className="min-h-screen bg-bg px-4 py-6 sm:px-6 sm:py-10">
@@ -28,7 +29,7 @@ function Home() {
               <p className="font-display text-lg font-bold tracking-tight">
                 FoosRank
               </p>
-              <p className="text-xs text-muted">Local foosball tracking</p>
+              <p className="text-xs text-muted">Shared foosball tracking</p>
             </div>
           </div>
           <ThemeToggle />
@@ -60,7 +61,7 @@ function Home() {
               </div>
             ) : (
               <p className="mt-3 text-sm text-muted">
-                No organizations are stored in this browser.
+                No recently visited organizations in this browser.
               </p>
             )}
           </section>

@@ -6,10 +6,15 @@ import { useState } from 'react'
 import { Scoreboard } from '../../../components/scoreboard'
 import { Button } from '../../../components/ui/button'
 import { Card, CardContent } from '../../../components/ui/card'
-import { matchesCollection } from '../../../collections/matches'
+import {
+  refreshOrganization,
+  updateOrganizationSnapshot,
+} from '../../../collections'
+import { getMatchesCollection } from '../../../collections/matches'
 import type { TeamColor } from '../../../collections/matches'
-import { peopleCollection } from '../../../collections/people'
-import { calculateEloChanges, eloHistory } from '../../../domain/elo'
+import { getPeopleCollection } from '../../../collections/people'
+import { dataStore } from '../../../data/datastore'
+import { eloHistory } from '../../../domain/elo'
 import { validateMatch } from '../../../domain/matches'
 import { cn } from '../../../lib/cn'
 
@@ -20,10 +25,10 @@ export const Route = createFileRoute('/$organizationId/matches/$matchId')({
 function MatchDetail() {
   const navigate = useNavigate()
   const { organizationId, matchId } = Route.useParams()
-  const people = (useLiveQuery(() => peopleCollection).data ?? []).filter(
-    (person) => person.organizationId === organizationId,
-  )
-  const matches = useLiveQuery(() => matchesCollection).data ?? []
+  const people =
+    useLiveQuery(() => getPeopleCollection(organizationId)).data ?? []
+  const matches =
+    useLiveQuery(() => getMatchesCollection(organizationId)).data ?? []
   const match = matches.find(
     (item) => item.id === matchId && item.organizationId === organizationId,
   )
@@ -38,44 +43,34 @@ function MatchDetail() {
         validPersonIds,
       )
       if (scoreError) throw new Error(scoreError)
-      const sequence =
-        Math.max(
-          0,
-          ...matches
-            .filter((item) => item.organizationId === organizationId)
-            .map((item) => item.sequence ?? 0),
-        ) + 1
-      const completedAt = new Date().toISOString()
-      const eloChanges = calculateEloChanges(
-        { participants: match.participants, score },
-        people.filter((person) =>
-          match.participants.some(
-            (participant) => participant.personId === person.id,
-          ),
+      const completed = await dataStore.completeMatch({
+        organizationId,
+        matchId,
+        score,
+      })
+      updateOrganizationSnapshot(organizationId, (snapshot) => ({
+        ...snapshot,
+        matches: snapshot.matches.map((item) =>
+          item.id === completed.match.id ? completed.match : item,
         ),
-      )
-      const transactions = [
-        matchesCollection.update(match.id, (draft) => {
-          draft.complete = true
-          draft.sequence = sequence
-          draft.completedAt = completedAt
-          draft.score = score
-          draft.eloChanges = eloChanges
-        }),
-        ...eloChanges.map((eloChange) =>
-          peopleCollection.update(eloChange.personId, (draft) => {
-            draft.elo += eloChange.change
-          }),
+        people: snapshot.people.map(
+          (person) =>
+            completed.people.find((item) => item.id === person.id) ?? person,
         ),
-      ]
-      await Promise.all(
-        transactions.map((transaction) => transaction.isPersisted.promise),
-      )
+      }))
+      await refreshOrganization(organizationId).catch(() => undefined)
     },
   })
   const cancel = useMutation({
     mutationFn: async () => {
-      if (match) await matchesCollection.delete(match.id).isPersisted.promise
+      if (match) {
+        await dataStore.cancelMatch({ organizationId, matchId: match.id })
+        updateOrganizationSnapshot(organizationId, (snapshot) => ({
+          ...snapshot,
+          matches: snapshot.matches.filter((item) => item.id !== match.id),
+        }))
+        await refreshOrganization(organizationId).catch(() => undefined)
+      }
     },
   })
   const [redScore, setRedScore] = useState(0)

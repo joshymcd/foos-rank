@@ -8,9 +8,9 @@ import {
   CardHeader,
   CardTitle,
 } from '../../components/ui/card'
-import { organizationsCollection } from '../../collections/organization'
-import { matchesCollection } from '../../collections/matches'
-import { peopleCollection } from '../../collections/people'
+import { getOrganizationCollection } from '../../collections/organization'
+import { getMatchesCollection } from '../../collections/matches'
+import { getPeopleCollection } from '../../collections/people'
 import { leaderboard } from '../../domain/elo'
 
 export const Route = createFileRoute('/$organizationId/')({
@@ -20,14 +20,12 @@ export const Route = createFileRoute('/$organizationId/')({
 function Overview() {
   const { organizationId } = Route.useParams()
   const organization = (
-    useLiveQuery(() => organizationsCollection).data ?? []
+    useLiveQuery(() => getOrganizationCollection(organizationId)).data ?? []
   ).find((item) => item.id === organizationId)
-  const people = (useLiveQuery(() => peopleCollection).data ?? []).filter(
-    (person) => person.organizationId === organizationId,
-  )
-  const allMatches = (useLiveQuery(() => matchesCollection).data ?? []).filter(
-    (match) => match.organizationId === organizationId,
-  )
+  const people =
+    useLiveQuery(() => getPeopleCollection(organizationId)).data ?? []
+  const allMatches =
+    useLiveQuery(() => getMatchesCollection(organizationId)).data ?? []
   const completedMatches = allMatches
     .filter((match) => match.complete)
     .sort((a, b) => (b.sequence ?? 0) - (a.sequence ?? 0))

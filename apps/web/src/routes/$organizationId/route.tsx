@@ -1,16 +1,22 @@
 import { Outlet, createFileRoute } from '@tanstack/react-router'
 import { useLiveQuery } from '@tanstack/react-db'
 import { AppShell, EmptyOrganization } from '../../components/app-shell'
-import { matchesCollection } from '../../collections/matches'
-import { organizationsCollection } from '../../collections/organization'
-import { peopleCollection } from '../../collections/people'
+import { getMatchesCollection } from '../../collections/matches'
+import { getOrganizationCollection } from '../../collections/organization'
+import { getPeopleCollection } from '../../collections/people'
+import { dataStore } from '../../data/datastore'
+import { rememberOrganization } from '../../data/recent-organizations'
 
 export const Route = createFileRoute('/$organizationId')({
-  loader: async () => {
+  loader: async ({ params }) => {
+    const snapshot = await dataStore.getOrganizationSnapshot(
+      params.organizationId,
+    )
+    if (snapshot) rememberOrganization(params.organizationId)
     await Promise.all([
-      organizationsCollection.preload(),
-      peopleCollection.preload(),
-      matchesCollection.preload(),
+      getOrganizationCollection(params.organizationId).preload(),
+      getPeopleCollection(params.organizationId).preload(),
+      getMatchesCollection(params.organizationId).preload(),
     ])
   },
   component: OrganizationLayout,
@@ -19,7 +25,7 @@ export const Route = createFileRoute('/$organizationId')({
 function OrganizationLayout() {
   const { organizationId } = Route.useParams()
   const organization = (
-    useLiveQuery(() => organizationsCollection).data ?? []
+    useLiveQuery(() => getOrganizationCollection(organizationId)).data ?? []
   ).find((item) => item.id === organizationId)
   if (!organization)
     return (
