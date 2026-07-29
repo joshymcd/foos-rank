@@ -15,7 +15,6 @@ export function organizationSnapshotOptions(organizationId: string) {
   return queryOptions({
     queryKey: ['foosrank', 'organization', organizationId],
     queryFn: () => getOrganizationSnapshotFn({ data: { id: organizationId } }),
-    refetchInterval: 10_000,
     refetchOnWindowFocus: true,
     refetchOnReconnect: true,
   })

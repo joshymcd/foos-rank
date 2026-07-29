@@ -46,7 +46,7 @@ apps/web/src/components   Shared UI
 apps/web/tests/e2e        Playwright workflows
 ```
 
-Route loaders preload one DynamoDB-backed snapshot per organization. Components use TanStack Query; snapshots refresh on focus and poll while active so other browsers' changes become visible. Organization setup and match completion are atomic server commands.
+Route loaders preload one DynamoDB-backed snapshot per organization. Components use TanStack Query; snapshots refresh after mutations and when the browser regains focus. Organization setup and match completion are atomic server commands.
 
 Production data is retained by SST. Preview-stage data is isolated and removed with its stage.
 
