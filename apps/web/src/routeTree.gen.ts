@@ -11,7 +11,9 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as OrganizationIdRouteRouteImport } from './routes/$organizationId/route'
+import { Route as SetupRouteImport } from './routes/setup'
 import { Route as OrganizationIdIndexRouteImport } from './routes/$organizationId/index'
+import { Route as OrganizationIdAdminRouteImport } from './routes/$organizationId/admin'
 import { Route as OrganizationIdLeaderboardRouteImport } from './routes/$organizationId/leaderboard'
 import { Route as OrganizationIdMatchesIndexRouteImport } from './routes/$organizationId/matches/index'
 import { Route as OrganizationIdMatchesMatchIdRouteImport } from './routes/$organizationId/matches/$matchId'
@@ -29,9 +31,19 @@ const OrganizationIdRouteRoute = OrganizationIdRouteRouteImport.update({
   path: '/$organizationId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SetupRoute = SetupRouteImport.update({
+  id: '/setup',
+  path: '/setup',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const OrganizationIdIndexRoute = OrganizationIdIndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => OrganizationIdRouteRoute,
+} as any)
+const OrganizationIdAdminRoute = OrganizationIdAdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
   getParentRoute: () => OrganizationIdRouteRoute,
 } as any)
 const OrganizationIdLeaderboardRoute =
@@ -74,6 +86,8 @@ const OrganizationIdPeoplePersonIdRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/$organizationId': typeof OrganizationIdRouteRouteWithChildren
+  '/setup': typeof SetupRoute
+  '/$organizationId/admin': typeof OrganizationIdAdminRoute
   '/$organizationId/leaderboard': typeof OrganizationIdLeaderboardRoute
   '/$organizationId/': typeof OrganizationIdIndexRoute
   '/$organizationId/matches/$matchId': typeof OrganizationIdMatchesMatchIdRoute
@@ -84,6 +98,8 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/setup': typeof SetupRoute
+  '/$organizationId/admin': typeof OrganizationIdAdminRoute
   '/$organizationId/leaderboard': typeof OrganizationIdLeaderboardRoute
   '/$organizationId': typeof OrganizationIdIndexRoute
   '/$organizationId/matches/$matchId': typeof OrganizationIdMatchesMatchIdRoute
@@ -96,6 +112,8 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/$organizationId': typeof OrganizationIdRouteRouteWithChildren
+  '/setup': typeof SetupRoute
+  '/$organizationId/admin': typeof OrganizationIdAdminRoute
   '/$organizationId/leaderboard': typeof OrganizationIdLeaderboardRoute
   '/$organizationId/': typeof OrganizationIdIndexRoute
   '/$organizationId/matches/$matchId': typeof OrganizationIdMatchesMatchIdRoute
@@ -109,6 +127,8 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/$organizationId'
+    | '/setup'
+    | '/$organizationId/admin'
     | '/$organizationId/leaderboard'
     | '/$organizationId/'
     | '/$organizationId/matches/$matchId'
@@ -119,6 +139,8 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/setup'
+    | '/$organizationId/admin'
     | '/$organizationId/leaderboard'
     | '/$organizationId'
     | '/$organizationId/matches/$matchId'
@@ -130,6 +152,8 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/$organizationId'
+    | '/setup'
+    | '/$organizationId/admin'
     | '/$organizationId/leaderboard'
     | '/$organizationId/'
     | '/$organizationId/matches/$matchId'
@@ -142,6 +166,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   OrganizationIdRouteRoute: typeof OrganizationIdRouteRouteWithChildren
+  SetupRoute: typeof SetupRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -160,11 +185,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OrganizationIdRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/setup': {
+      id: '/setup'
+      path: '/setup'
+      fullPath: '/setup'
+      preLoaderRoute: typeof SetupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/$organizationId/': {
       id: '/$organizationId/'
       path: '/'
       fullPath: '/$organizationId/'
       preLoaderRoute: typeof OrganizationIdIndexRouteImport
+      parentRoute: typeof OrganizationIdRouteRoute
+    }
+    '/$organizationId/admin': {
+      id: '/$organizationId/admin'
+      path: '/admin'
+      fullPath: '/$organizationId/admin'
+      preLoaderRoute: typeof OrganizationIdAdminRouteImport
       parentRoute: typeof OrganizationIdRouteRoute
     }
     '/$organizationId/leaderboard': {
@@ -213,6 +252,7 @@ declare module '@tanstack/react-router' {
 }
 
 interface OrganizationIdRouteRouteChildren {
+  OrganizationIdAdminRoute: typeof OrganizationIdAdminRoute
   OrganizationIdLeaderboardRoute: typeof OrganizationIdLeaderboardRoute
   OrganizationIdIndexRoute: typeof OrganizationIdIndexRoute
   OrganizationIdMatchesMatchIdRoute: typeof OrganizationIdMatchesMatchIdRoute
@@ -223,6 +263,7 @@ interface OrganizationIdRouteRouteChildren {
 }
 
 const OrganizationIdRouteRouteChildren: OrganizationIdRouteRouteChildren = {
+  OrganizationIdAdminRoute: OrganizationIdAdminRoute,
   OrganizationIdLeaderboardRoute: OrganizationIdLeaderboardRoute,
   OrganizationIdIndexRoute: OrganizationIdIndexRoute,
   OrganizationIdMatchesMatchIdRoute: OrganizationIdMatchesMatchIdRoute,
@@ -238,6 +279,7 @@ const OrganizationIdRouteRouteWithChildren =
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   OrganizationIdRouteRoute: OrganizationIdRouteRouteWithChildren,
+  SetupRoute: SetupRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

@@ -22,7 +22,7 @@ async function createPendingMatch(page: Page, red: string, blue: string) {
 test('creates an organization and records a match', async ({ page }) => {
   const errors = captureBrowserErrors(page)
 
-  await page.goto('/')
+  await page.goto('/setup')
   await page.getByPlaceholder('Acme Ltd').fill('Acme Ltd')
   await page.getByPlaceholder('Alex Morgan').fill('Alex Morgan')
   await page.getByRole('button', { name: 'Create organization' }).click()
@@ -55,8 +55,17 @@ test('creates an organization and records a match', async ({ page }) => {
   await expect(page.getByText('+16')).toBeVisible()
   await page.goto('/acme-ltd/leaderboard')
   await expect(page.getByRole('link', { name: /Alex Morgan/ })).toBeVisible()
+  await page.goto('/acme-ltd/admin')
+  await page.getByLabel('Organization name').fill('Acme Foosball')
+  await page.getByRole('button', { name: 'Save changes' }).click()
+  await expect(page.getByText('Organization settings saved.')).toBeVisible()
+  await expect(
+    page.getByRole('complementary').getByText('Acme Foosball'),
+  ).toBeVisible()
   await page.reload()
-  await expect(page.getByRole('link', { name: /Alex Morgan/ })).toBeVisible()
+  await expect(page.getByLabel('Organization name')).toHaveValue(
+    'Acme Foosball',
+  )
   expect(errors).toEqual([])
 })
 
