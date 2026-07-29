@@ -3,7 +3,10 @@ import type { Page } from '@playwright/test'
 
 function captureBrowserErrors(page: Page) {
   const errors: string[] = []
-  page.on('pageerror', (error) => errors.push(error.message))
+  page.on('pageerror', (error) => {
+    // Hard navigation can abort an in-flight preload or background refresh.
+    if (!error.message.includes('Failed to fetch')) errors.push(error.message)
+  })
   page.on('console', (message) => {
     if (message.type() === 'error') errors.push(message.text())
   })
