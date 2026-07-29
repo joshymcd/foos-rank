@@ -20,8 +20,8 @@ const config = defineConfig({
     preset: 'aws-lambda',
     awsLambda: {
       streaming: false
-    }
-  }
+    },
+  },
 })
 
 export default config
