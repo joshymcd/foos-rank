@@ -37,6 +37,11 @@ test('creates an organization and records a match', async ({ page }) => {
   await page.getByRole('button', { name: 'Create organization' }).click()
   await expect(page).toHaveURL(new RegExp(`/${organizationId}$`))
 
+  await page.goto('/')
+  await page.getByLabel('Organization ID or URL').fill(organizationId)
+  await page.getByRole('button', { name: 'Open' }).click()
+  await expect(page).toHaveURL(new RegExp(`/${organizationId}$`))
+
   await page.goto(`/${organizationId}/people`)
   await page.getByPlaceholder('Player name').fill('Bob Smith')
   await page.getByRole('button', { name: 'Add player' }).click()
